@@ -22,3 +22,13 @@ On another machine that is synced to, run the following:
   python tesla-incoming.py
 
 That will watch for arriving `data.csv` files, rename them and put them in the storage directory.
+
+Downloading Octopus Data
+------------------------
+
+This will download 30 mins consumptions readings from Octopus and put them in one csv per day
+in the storage directory. You can specify a start and end date.
+
+.. code-block:: bash
+
+  python octopus-download.py
