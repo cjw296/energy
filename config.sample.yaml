@@ -1,0 +1,7 @@
+directories:
+  incoming: ~/Dropbox
+  storage: ~/Dropbox/electricity_data
+octopus:
+  mpan: 1234567891011
+  meter_serial: 12A3456789
+  api_key: "from https://octopus.energy/dashboard/developer/"
