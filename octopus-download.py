@@ -42,11 +42,12 @@ def download(mpan, meter_serial, api_key, target, start: DateTime = None, end: D
     for date, group in groupby(from_octopus(mpan, meter_serial, api_key, start, end),
                                lambda row: pendulum.parse(row['interval_start']).date()):
         readings = tuple(group)
+        suffix = ''
         if len(readings) != READINGS_PER_DAY:
-            print(f'Skipping {date} as {len(readings)} readings instead of {READINGS_PER_DAY}')
-            continue
+            print(f'{date} is suspect as {len(readings)} readings instead of {READINGS_PER_DAY}')
+            suffix = '-suspect'
 
-        target_path = Path(target).expanduser() / f'octopus-{date}.csv'
+        target_path = Path(target).expanduser() / f'octopus-{date}{suffix}.csv'
         with target_path.open('w') as target_file:
             headers = ['interval_start', 'interval_end', 'consumption']
             writer = csv.DictWriter(target_file, headers)
