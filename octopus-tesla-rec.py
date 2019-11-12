@@ -39,8 +39,6 @@ def reconcile(storage: Path, date: Date, threshold: float):
 
     octopus = pd.read_csv(storage / f'octopus-{date}.csv',
                           index_col='interval_start', parse_dates=['interval_start'])
-    # octopus data has a weird half-hour-off in their api data, they're looking into this:
-    octopus.index -= timedelta(minutes=30)
 
     diff = (octopus['consumption'] - tesla['Grid (kW)'])
     bad = diff[diff.abs() > threshold]
