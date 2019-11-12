@@ -43,3 +43,13 @@ threshold in kWh:
 .. code-block:: bash
 
   python octopus-tesla-rec.py --threshold 0.2
+
+Octopus Bill Calculator for Go
+------------------------------
+
+This calculates your bill based on the data downloaded above. So, for November's bill, as an
+example, you'd do:
+
+.. code-block:: bash
+
+  python octopus-bill.py 2019-10-01 2019-11-01
