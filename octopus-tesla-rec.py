@@ -15,7 +15,7 @@ def date(text):
 def parse_args():
     parser = ArgumentParser()
     parser.add_argument('--date', type=date)
-    parser.add_argument('--threshold', type=float, default=0.04)
+    parser.add_argument('--threshold', type=float, default=0.11)
     return parser.parse_args()
 
 
