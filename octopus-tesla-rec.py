@@ -1,5 +1,4 @@
 from argparse import ArgumentParser
-from datetime import timedelta
 from pathlib import Path
 
 import pandas as pd
