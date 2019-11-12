@@ -52,7 +52,7 @@ if __name__ == '__main__':
     storage = Path(config.directories.storage).expanduser()
     args = parse_args()
     if args.date:
-        dates = [args.date]
+        dates = [args.date.date()]
     else:
         dates = find_dates(storage)
     for date in sorted(dates):
