@@ -38,12 +38,23 @@ def from_octopus(mpan, meter_serial, api_key, start=None, end=None):
 READINGS_PER_DAY = int(24*60/30)
 
 
+def extract_tz_offset(row):
+    return pendulum.parse(row['interval_start']).utcoffset().total_seconds()
+
+
+def expected_readings_per_day(readings):
+    first_offset = extract_tz_offset(readings[0])
+    last_offset = extract_tz_offset(readings[-1])
+    # take DST changes into account:
+    return READINGS_PER_DAY - (last_offset - first_offset)/60/30
+
+
 def download(mpan, meter_serial, api_key, target, start: DateTime = None, end: DateTime = None):
     for date, group in groupby(from_octopus(mpan, meter_serial, api_key, start, end),
                                lambda row: pendulum.parse(row['interval_start']).date()):
         readings = tuple(group)
         suffix = ''
-        if len(readings) != READINGS_PER_DAY:
+        if len(readings) != expected_readings_per_day(readings):
             print(f'{date} is suspect as {len(readings)} readings instead of {READINGS_PER_DAY}')
             suffix = '-suspect'
 
