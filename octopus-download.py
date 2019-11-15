@@ -75,4 +75,4 @@ if __name__ == '__main__':
     download(start=args.start.start_of('day') if args.start else None,
              end=args.end.end_of('day') if args.end else None,
              target=config.directories.storage,
-             **config.octopus.data)
+             **config.octopus.api.data)
