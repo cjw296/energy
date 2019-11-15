@@ -47,7 +47,7 @@ threshold in kWh:
 Octopus Bill Calculator for Go
 ------------------------------
 
-This calculates your bill based on the data downloaded above. So, for November's bill, as an
+This calculates your bill based on the data downloaded above. So, for October's bill, as an
 example, you'd do:
 
 .. code-block:: bash
