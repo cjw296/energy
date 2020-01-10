@@ -6,6 +6,8 @@ import pendulum
 from configurator import Config
 from pendulum import DateTime, Date
 
+from loaders import load_octopus, load_tesla
+
 
 def date(text):
     return pendulum.parse(text, tz='Europe/London')
@@ -29,20 +31,9 @@ def find_dates(storage: Path):
 
 def reconcile(storage: Path, date: Date, threshold: float):
     print(date)
-    tesla = pd.read_csv(storage / f'tesla-{date}.csv',
-                        index_col='Date time',
-                        parse_dates=['Date time'],
-                        date_parser=lambda col: pd.to_datetime(col, utc=True))
-    # blank out any energy sent back to the grid, octopus is consumption only:
-    tesla[tesla['Grid (kW)']<0] = 0
-    # Tesla provide power flow every 5 mins, let's assume that represents the continous
-    # consumption for the next 5 mins, and then resample to half-hours to match Octopus:
-    tesla = (tesla*5/60).resample('30T').sum()
-
-    octopus = pd.read_csv(storage / f'octopus-{date}.csv',
-                          index_col='interval_start', parse_dates=['interval_start'])
-
-    diff = (octopus['consumption'] - tesla['Grid (kW)'])
+    tesla = load_tesla(storage, date)
+    octopus = load_octopus(storage, date)
+    diff = (octopus['consumption'] - tesla['consumption'])
     bad = diff[diff.abs() > threshold]
     if not bad.empty:
         print(bad, end='\n\n')
