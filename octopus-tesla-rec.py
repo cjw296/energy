@@ -28,6 +28,7 @@ def find_dates(storage: Path):
 
 
 def reconcile(storage: Path, date: Date, threshold: float):
+    print(date)
     tesla = pd.read_csv(storage / f'tesla-{date}.csv',
                         index_col='Date time',
                         parse_dates=['Date time'],
