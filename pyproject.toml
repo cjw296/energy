@@ -6,12 +6,13 @@ authors = ["Chris Withers <chris@withers.org>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.7"
-requests = "^2.22"
-pandas = "^0.25.1"
-watchdog = "^0.9.0"
+python = "^3.9"
+requests = "*"
+pandas = "*"
+watchdog = "*"
 configurator = {version = "^1.2",extras = ["yaml"]}
-pendulum = "^2.0"
+pendulum = "^*"
+tesla-api = "^2"
 
 [tool.poetry.dev-dependencies]
 
