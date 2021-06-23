@@ -12,7 +12,7 @@ pandas = "*"
 watchdog = "*"
 configurator = {version = "^1.2",extras = ["yaml"]}
 pendulum = "^*"
-tesla-api = "^2"
+TeslaPy = "^2"
 
 [tool.poetry.dev-dependencies]
 
