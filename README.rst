@@ -4,9 +4,13 @@ Energy Tools
 Environment Setup
 -----------------
 
-`Install Poetry`__ and then do a ``poetry install`` in a checkout of this repo.
+Build a virtualenv:
 
-__ https://poetry.eustace.io/docs/#installation
+```
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
 Then copy ``config.sample.yaml`` to ``config.yaml`` and fill in the config.
 
