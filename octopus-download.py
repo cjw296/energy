@@ -9,7 +9,14 @@ from configurator import Config
 from pendulum import DateTime
 
 
-def from_octopus(mpan, meter_serial, api_key, start=None, end=None):
+def from_octopus(
+        mpan,
+        meter_serial,
+        api_key,
+        endpoint: str,
+        start=None,
+        end=None,
+):
     params = {'order_by': 'period'}
     for name, value in (('period_from', start), ('period_to', end)):
         if value is not None:
@@ -23,7 +30,7 @@ def from_octopus(mpan, meter_serial, api_key, start=None, end=None):
         return data
 
     data = get(
-        f"https://api.octopus.energy/v1/electricity-meter-points/{mpan}/meters/{meter_serial}/consumption/",
+        f"https://api.octopus.energy/v1/{endpoint}/{mpan}/meters/{meter_serial}/consumption/",
         **params
     )
     while True:
@@ -49,8 +56,16 @@ def expected_readings_per_day(readings):
     return READINGS_PER_DAY - (last_offset - first_offset)/60/30
 
 
-def download(mpan, meter_serial, api_key, target, start: DateTime = None, end: DateTime = None):
-    for date, group in groupby(from_octopus(mpan, meter_serial, api_key, start, end),
+def download(
+        mpan,
+        meter_serial,
+        api_key,
+        target,
+        start: DateTime = None,
+        end: DateTime = None,
+        endpoint: str = 'electricity-meter-points',
+):
+    for date, group in groupby(from_octopus(mpan, meter_serial, api_key, endpoint, start, end),
                                lambda row: pendulum.parse(row['interval_start']).date()):
         readings = tuple(group)
         suffix = ''
