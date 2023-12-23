@@ -1,6 +1,6 @@
 directories:
-  incoming: ~/Dropbox
-  storage: ~/Dropbox/electricity_data
+  incoming: data
+  storage: data
 octopus:
   api:
     mpan: 1234567891011
