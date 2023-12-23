@@ -10,3 +10,7 @@ octopus:
     standing: 0.25
     cheap: 0.05
     normal: 0.138
+myenergi:
+  username: ""
+  device_serial: ""
+  api_key: "from https://support.myenergi.com/hc/en-gb/articles/5069627351185-How-do-I-get-an-API-key-"
