@@ -1,7 +1,11 @@
-requests
-pandas
-watchdog
-configurator[yaml]
-pendulum
+TeslaPy
 camelot-py
+configurator[yaml]
+matplotlib
+notebook
+pandas
+pendulum
+requests
+watchdog
+tesla-api
 
