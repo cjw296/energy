@@ -1,16 +1,14 @@
 import csv
-import json
 import logging
-import sys
-from argparse import ArgumentParser
 from pathlib import Path
-from pprint import pprint, pformat
+from pprint import pformat
 
 import requests
 from configurator import Config
 from pandas import date_range, Timestamp
 from requests.auth import HTTPDigestAuth
 
+from common import main, collect, json_from_paths
 
 # lifted from https://github.com/ashleypittman/mec/blob/master/get_zappi_history.py
 # in combination with https://github.com/twonk/MyEnergi-App-Api
@@ -26,8 +24,7 @@ FIELD_NAMES = {'gep': 'Generation',
                'exp': 'Exported'}
 
 
-def path_for_date(root: Path, ts: Timestamp) -> Path:
-    return root / ts.strftime('zappi-%Y-%m-%d.json')
+PATTERN = 'zappi-%Y-%m-%d.json'
 
 
 def download(config: Config, start: Timestamp, end: Timestamp, root: Path) -> None:
@@ -46,7 +43,7 @@ def download(config: Config, start: Timestamp, end: Timestamp, root: Path) -> No
     for ts in date_range(start=end, end=start, freq='-1D'):
         response = session.get(ts.strftime(url_template))
         response.raise_for_status()
-        path = path_for_date(root, ts)
+        path = root / ts.strftime(PATTERN)
         path.write_text(response.text)
         logging.info(f'Downloaded {path}')
 
@@ -54,12 +51,7 @@ def download(config: Config, start: Timestamp, end: Timestamp, root: Path) -> No
 def json_to_csv(config: Config, start: Timestamp, end: Timestamp, root: Path) -> None:
     myenergi_config = config.myenergi
     zappi_key = f'U{myenergi_config.zappi_serial}'
-    for ts in date_range(start=end, end=start, freq='-1D'):
-        json_path = path_for_date(root, ts)
-        if not json_path.exists():
-            logging.warning(f'{json_path} does not exist')
-            continue
-        data = json.loads(json_path.read_bytes())
+    for json_path, data in json_from_paths(root, PATTERN, start, end):
 
         fieldnames = {'datetime': True}
         rows = []
@@ -93,26 +85,5 @@ def json_to_csv(config: Config, start: Timestamp, end: Timestamp, root: Path) ->
         logging.info(f'Wrote {csv_path}')
 
 
-actions = {action.__name__.replace('_', '-'): action
-           for action in (download, json_to_csv)}
-
-
 if __name__ == '__main__':
-    log_levels = logging.getLevelNamesMapping()
-    parser = ArgumentParser()
-    parser.add_argument('action', choices=actions.keys())
-    parser.add_argument('--log-level',
-                        choices=[name.lower() for name in log_levels],
-                        default='info')
-    parser.add_argument('--start', type=Timestamp, help='YY-mm-dd', required=True)
-    parser.add_argument('--end', type=Timestamp, help='YY-mm-dd', required=True)
-    args = parser.parse_args()
-
-    logging.basicConfig(level=log_levels[args.log_level.upper()], stream=sys.stdout)
-    logging.raiseExceptions = False
-
-    config = Config.from_path('config.yaml')
-    start = min(args.start, args.end)
-    end = max(args.start, args.end)
-    root = Path(config.directories.storage).expanduser()
-    actions[args.action](config, start, end, root)
+    main(collect(download, json_to_csv))
