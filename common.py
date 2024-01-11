@@ -1,12 +1,14 @@
 import json
 import logging
+import re
 import sys
 from argparse import ArgumentParser
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterator
 
 from configurator import Config
-from pandas import Timestamp, date_range
+from pandas import Timestamp, date_range, to_datetime
 
 Action = Callable[[Config, Timestamp, Timestamp, Path], None]
 ActionMapping = dict[str, Action]
@@ -20,24 +22,50 @@ def collect(*actions: Action) -> ActionMapping:
     return mapping
 
 
-def main(actions: ActionMapping) -> None:
+@dataclass(unsafe_hash=True)
+class TimestampArg:
+    root: Path
+    pattern: str
+
+    name_to_index = {
+        'max': -1,
+        'min': 0
+    }
+
+    def __call__(self, text: str) -> Timestamp:
+        if text=='now':
+            return Timestamp.now()
+        index = self.name_to_index.get(text)
+        if index is not None:
+            paths = self.root.glob(re.sub(r'%.', '*', self.pattern))
+            possible = sorted(to_datetime(p.name, format=self.pattern) for p in paths)
+            return possible[index]
+        return Timestamp(text)
+
+    def add_argument(self, parser, name):
+        parser.add_argument('--'+name, type=self, help='YY-mm-dd, max, min or now', required=True)
+
+
+def main(actions: ActionMapping, pattern) -> None:
+    config = Config.from_path('config.yaml')
+    root = Path(config.directories.storage).expanduser()
+
     log_levels = logging.getLevelNamesMapping()
     parser = ArgumentParser()
     parser.add_argument('action', choices=actions.keys())
     parser.add_argument('--log-level',
                         choices=[name.lower() for name in log_levels],
                         default='info')
-    parser.add_argument('--start', type=Timestamp, help='YY-mm-dd', required=True)
-    parser.add_argument('--end', type=Timestamp, help='YY-mm-dd', required=True)
+    timestamp = TimestampArg(root, pattern)
+    timestamp.add_argument(parser, 'start')
+    timestamp.add_argument(parser, 'end')
     args = parser.parse_args()
 
-    logging.basicConfig(level=log_levels[args.log_level.upper()], stream=sys.stdout)
+    logging.basicConfig(level=log_levels[args.log_level.upper()], stream=sys.stdout, force=True)
     logging.raiseExceptions = False
 
-    config = Config.from_path('config.yaml')
     start = min(args.start, args.end)
     end = max(args.start, args.end)
-    root = Path(config.directories.storage).expanduser()
     actions[args.action](config, start, end, root)
 
 

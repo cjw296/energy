@@ -115,4 +115,4 @@ def json_to_csv(config: Config, start: Timestamp, end: Timestamp, root: Path) ->
 
 
 if __name__ == '__main__':
-    main(collect(download, check, json_to_csv))
+    main(collect(download, check, json_to_csv), PATTERN)
