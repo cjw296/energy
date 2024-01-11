@@ -1,3 +1,4 @@
 config.yaml
 .ipynb*
 /data/
+cache.json
