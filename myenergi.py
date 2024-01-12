@@ -62,13 +62,14 @@ def json_to_csv(config: Config, start: Timestamp, end: Timestamp, root: Path) ->
                 month=row.pop('mon'),
                 day=row.pop('dom'),
                 hour=row.pop('hr', 0),
-                minute=row.pop('min', 0)
+                minute=row.pop('min', 0),
+                tz='UTC',
             )
             assert date.strftime('%a') == row.pop('dow')
             row['datetime'] = date.isoformat()
             row['volts'] = row.get('v1', 0) / 10
             for key in ('imp', 'h1b', 'exp'):
-                joules = row.get(key, 0)
+                joules = row.setdefault(key, 0)
                 row[f'{key}_kw'] = (joules / 60) / 1000
 
             logging.debug(f'{row}')
