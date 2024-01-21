@@ -46,6 +46,20 @@ class TimestampArg:
         parser.add_argument('--'+name, type=self, help='YY-mm-dd, max, min or now', required=True)
 
 
+LOG_LEVELS = logging.getLevelNamesMapping()
+
+
+def add_log_level(parser):
+    parser.add_argument('--log-level',
+                        choices=[name.lower() for name in LOG_LEVELS],
+                        default='info')
+
+
+def configure_logging(log_level: str) -> None:
+    logging.basicConfig(level=LOG_LEVELS[log_level.upper()], stream=sys.stdout, force=True)
+    logging.raiseExceptions = False
+
+
 def main(actions: ActionMapping, pattern) -> None:
     config = Config.from_path('config.yaml')
     root = Path(config.directories.storage).expanduser()
@@ -53,16 +67,13 @@ def main(actions: ActionMapping, pattern) -> None:
     log_levels = logging.getLevelNamesMapping()
     parser = ArgumentParser()
     parser.add_argument('action', choices=actions.keys())
-    parser.add_argument('--log-level',
-                        choices=[name.lower() for name in log_levels],
-                        default='info')
+    add_log_level(parser)
     timestamp = TimestampArg(root, pattern)
     timestamp.add_argument(parser, 'start')
     timestamp.add_argument(parser, 'end')
     args = parser.parse_args()
 
-    logging.basicConfig(level=log_levels[args.log_level.upper()], stream=sys.stdout, force=True)
-    logging.raiseExceptions = False
+    configure_logging(args.log_level)
 
     start = min(args.start, args.end)
     end = max(args.start, args.end)
