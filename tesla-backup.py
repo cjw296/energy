@@ -24,6 +24,7 @@ def main():
     info = battery.api('SITE_CONFIG')['response']
     logging.debug(f'{info=}')
     backup_reserve_percent = info['backup_reserve_percent']
+    grid_limit = info['max_site_meter_power_ac']
 
     live_data = battery.api('SITE_DATA')['response']
     logging.debug(f'{live_data=}')
@@ -33,7 +34,9 @@ def main():
     remaining = battery.api('ENERGY_SITE_BACKUP_TIME_REMAINING')['response']['time_remaining_hours']
 
     logging.info(
-        f'{current=:.0f}%, {remaining:.1f}hrs, {load/1000:.1f}kW, {backup_reserve_percent=:.0f}%'
+        f'{current=:.0f}%, {remaining:.1f}hrs, {load/1000:.1f}kW, '
+        f'{backup_reserve_percent=:.0f}%, '
+        f'{grid_limit=}kW'
     )
 
     if args.set_backup_reserve_percent is not None:
