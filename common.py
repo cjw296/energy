@@ -64,7 +64,6 @@ def main(actions: ActionMapping, pattern) -> None:
     config = Config.from_path('config.yaml')
     root = Path(config.directories.storage).expanduser()
 
-    log_levels = logging.getLevelNamesMapping()
     parser = ArgumentParser()
     parser.add_argument('action', choices=actions.keys())
     add_log_level(parser)
