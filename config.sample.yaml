@@ -2,14 +2,11 @@ directories:
   incoming: data
   storage: data
 octopus:
-  api:
-    mpan: 1234567891011
-    meter_serial: 12A3456789
-    api_key: "from https://octopus.energy/dashboard/developer/"
-  charges:
-    standing: 0.25
-    cheap: 0.05
-    normal: 0.138
+  api_key: "from https://octopus.energy/dashboard/developer/"
+  account: "A-XXXXXX"
+  # optional:
+  meter_serial: 12A3456789
+  endpoint: "gas-meter-points"
 myenergi:
   username: ""
   device_serial: ""
