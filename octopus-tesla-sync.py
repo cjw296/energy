@@ -70,7 +70,7 @@ def main():
     run = Run(get_octopus_dispatches)(graphql_client, account, dumper)
 
     if args.run_every:
-        run.every(seconds=args.run_every)
+        run.every(minutes=args.run_every)
     else:
         run.once()
 
