@@ -4,8 +4,10 @@ import re
 import sys
 from argparse import ArgumentParser
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
-from typing import Callable, Iterator
+from time import sleep
+from typing import Callable, Iterator, ParamSpec, Self
 
 from configurator import Config
 from pandas import Timestamp, date_range, to_datetime
@@ -91,3 +93,55 @@ def file_paths(root: Path, pattern: str, start: Timestamp, end: Timestamp) -> It
 def json_from_paths(root: Path, pattern: str, start: Timestamp, end: Timestamp) -> Iterator[tuple[Path, dict]]:
     for path in file_paths(root, pattern, start, end):
         yield path, json.loads(path.read_bytes())
+
+
+class DiffDumper:
+
+    def __init__(self, target: Path, prefix: str):
+        self.target = target
+        self.prefix = prefix
+        self.state = self.load_latest()
+
+    def load_latest(self):
+        sources = sorted(self.target.glob(f"*{self.prefix}*.json"))
+        if sources:
+            return json.loads(sources[-1].read_text())
+
+    def update(self, state):
+        breakpoint()
+        if self.state != state:
+            logging.debug(f"state changed for {self.prefix}")
+            dest = self.target / f"*{self.prefix}*.json"
+            dest.write_text(json.dumps(state))
+            self.state = state
+
+
+P = ParamSpec('P')
+timedelta_P = ParamSpec('timedelta_P', bound=timedelta)
+
+class Run:
+
+    def __init__(self, callable_: Callable[P, None]):
+        self.callable_ = callable_
+        self.args = ()
+        self.kw = {}
+
+    def __call__(self, *args: P.args, **kw: P.kwargs) -> Self:
+        self.args = args
+        self.kw = kw
+        return self
+
+    def once(self) -> None:
+        self.callable_(*self.args, **self.kw)
+
+    def every(self, **kwargs: timedelta_P.kwargs) -> None:
+        delay = timedelta(**kwargs).total_seconds()
+        try:
+            while True:
+                try:
+                    self.callable_(*self.args, **self.kw)
+                except Exception:
+                    logging.exception(f'{self.callable_} failed')
+                sleep(delay)
+        except KeyboardInterrupt:
+            pass

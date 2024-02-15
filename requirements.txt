@@ -1,6 +1,7 @@
 TeslaPy
 camelot-py
 configurator[yaml]
+gql[all]
 matplotlib
 notebook
 pandas
