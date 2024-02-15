@@ -4,7 +4,7 @@ import re
 import sys
 from argparse import ArgumentParser
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import timedelta, datetime
 from pathlib import Path
 from time import sleep
 from typing import Callable, Iterator, ParamSpec, Self
@@ -103,16 +103,18 @@ class DiffDumper:
         self.state = self.load_latest()
 
     def load_latest(self):
-        sources = sorted(self.target.glob(f"*{self.prefix}*.json"))
+        sources = sorted(self.target.glob(f"{self.prefix}*.json"))
         if sources:
-            return json.loads(sources[-1].read_text())
+            latest = sources[-1]
+            logging.debug(f'{latest=}')
+            return json.loads(latest.read_text())
 
     def update(self, state):
-        breakpoint()
         if self.state != state:
             logging.debug(f"state changed for {self.prefix}")
-            dest = self.target / f"*{self.prefix}*.json"
+            dest = self.target / f"{self.prefix}-{datetime.now():%Y-%m-%d-%H-%M-%S}.json"
             dest.write_text(json.dumps(state))
+            logging.debug(f'wrote {dest}')
             self.state = state
 
 
