@@ -6,7 +6,7 @@ octopus:
   account: "A-XXXXXX"
   # optional:
   meter_serial: 12A3456789
-  endpoint: "gas-meter-points"
+  endpoint: "gas-meter-points"  # for download only
 myenergi:
   username: ""
   device_serial: ""
