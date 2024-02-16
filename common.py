@@ -58,7 +58,13 @@ def add_log_level(parser):
 
 
 def configure_logging(log_level: str) -> None:
-    logging.basicConfig(level=LOG_LEVELS[log_level.upper()], stream=sys.stdout, force=True)
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)s:%(name)s:%(message)s",
+        datefmt='%Y-%m-%d %H:%M:%S',
+        level=LOG_LEVELS[log_level.upper()],
+        stream=sys.stdout,
+        force=True
+    )
     logging.raiseExceptions = False
 
 
