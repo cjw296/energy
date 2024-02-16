@@ -14,39 +14,15 @@ from gql.transport.aiohttp import log as gql_logger
 gql_logger.setLevel(logging.WARNING)
 
 
-def get_octopus_dispatches(
+def record_octopus_dispatches(
         graphql_client: OctopusGraphQLClient,
         account: str,
         dumper: DiffDumper,
 ):
-    dispatches = graphql_client.query(
-        "getCombinedData",
-        query = '''
-                query getCombinedData($accountNumber: String!) {
-                    plannedDispatches(accountNumber: $accountNumber) {
-                        startDtUtc: startDt
-                        endDtUtc: endDt
-                        chargeKwh: delta
-                        meta {
-                            source
-                            location
-                        }
-                    }
-                    completedDispatches(accountNumber: $accountNumber) {
-                        startDtUtc: startDt
-                        endDtUtc: endDt
-                        chargeKwh: delta
-                        meta {
-                            source
-                            location
-                        }
-                    }
-                }
-            ''',
-        params = {"accountNumber": account},
-    )
+    dispatches = graphql_client.dispatches(account)
+    unit_rates = graphql_client.unit_rates(account)
     logging.info(pformat(dispatches))
-    dumper.update(dispatches)
+    dumper.update({'dispatches': dispatches, 'unit_rates': unit_rates})
 
 
 def main():
@@ -65,7 +41,7 @@ def main():
     graphql_client = OctopusGraphQLClient(api_key)
     dumper = DiffDumper(Path(config.directories.storage).expanduser(), prefix='octopus-dispatches')
 
-    run = Run(get_octopus_dispatches)(graphql_client, account, dumper)
+    run = Run(record_octopus_dispatches)(graphql_client, account, dumper)
 
     if args.run_every:
         run.every(minutes=args.run_every)

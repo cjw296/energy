@@ -106,3 +106,60 @@ class OctopusGraphQLClient:
                 return self._query(operation_name, query, params)
             else:
                 raise
+
+    def dispatches(self, account: str) -> dict[str, list[dict[str, Any]]]:
+        return self.query(
+            "getCombinedData",
+            query='''
+                query getCombinedData($accountNumber: String!) {
+                    plannedDispatches(accountNumber: $accountNumber) {
+                        startDtUtc: startDt
+                        endDtUtc: endDt
+                        chargeKwh: delta
+                        meta {
+                            source
+                            location
+                        }
+                    }
+                    completedDispatches(accountNumber: $accountNumber) {
+                        startDtUtc: startDt
+                        endDtUtc: endDt
+                        chargeKwh: delta
+                        meta {
+                            source
+                            location
+                        }
+                    }
+                }
+                ''',
+            params={"accountNumber": account},
+        )
+
+    def unit_rates(self, account: str) -> list[dict[str, Any]]:
+        data = self.query(
+            'getProperties',
+            query="""
+                query getProperties($accountNumber: String!) {
+                  account(accountNumber: $accountNumber) {
+                      electricityAgreements(active: true) {
+                         validFrom
+                         validTo
+                         tariff {
+                            ... on HalfHourlyTariff {
+                              unitRates {
+                                value
+                                validTo
+                                validFrom
+                              }
+                            }
+                        }
+                      }
+                  }
+                }
+            """,
+            params={'accountNumber': account}
+        )
+        agreement, = data['account']['electricityAgreements']
+        return agreement['tariff']['unitRates']
+
+
