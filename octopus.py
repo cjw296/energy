@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass
+from pprint import pformat
 from typing import Any
 
 import requests
@@ -50,6 +51,7 @@ class OctopusRESTClient:
 
     def current_tariff_code(self, account, point_type):
         agreements = self.meter_point(account, point_type)['agreements']
+        logging.debug(f'agreements: {pformat(agreements)}')
         current = [a for a in agreements if a['valid_to'] is None]
         assert len(current) == 1, f'multiple current agreements found: {current}'
         return current[0]['tariff_code']
