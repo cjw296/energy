@@ -119,7 +119,7 @@ class DiffDumper:
         if self.state != state:
             logging.debug(f"state changed for {self.prefix}")
             dest = self.target / f"{self.prefix}-{datetime.now():%Y-%m-%d-%H-%M-%S}.json"
-            dest.write_text(json.dumps(state))
+            dest.write_text(json.dumps(state, indent=4))
             logging.debug(f'wrote {dest}')
             self.state = state
 
