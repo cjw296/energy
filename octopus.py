@@ -1,9 +1,11 @@
+import logging
 from dataclasses import dataclass
 from typing import Any
 
 import requests
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport
+from gql.transport.exceptions import TransportQueryError
 from requests import JSONDecodeError
 
 
@@ -101,7 +103,18 @@ class OctopusGraphQLClient:
         )
         return result['obtainKrakenToken']['token']
 
+    def set_token(self):
+        logging.debug('setting token')
+        self._transport.headers['Authorization'] = self.obtain_token()
+
     def query(self, operation_name: str, query: str, params: dict[str, Any]) -> dict[str, Any]:
-        if self._transport.headers.get('Authorization') is None:
-            self._transport.headers['Authorization'] = self.obtain_token()
-        return self._query(operation_name, query, params)
+        if 'Authorization' not in self._transport.headers:
+            self.set_token()
+        try:
+            return self._query(operation_name, query, params)
+        except TransportQueryError as e:
+            if e.errors[0]['message'] == 'Signature of the JWT has expired.':
+                self.set_token()
+                return self._query(operation_name, query, params)
+            else:
+                raise
