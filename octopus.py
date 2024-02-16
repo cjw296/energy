@@ -60,20 +60,6 @@ class OctopusRESTClient:
     def current_electricity_tariff_code(self, account):
         return self.current_tariff_code(account, 'electricity_meter_points')
 
-    def current_unit_rates(self, account, point_type, key):
-        tariff_code = self.current_tariff_code(account, point_type)
-        product_code = '-'.join(tariff_code.split('-')[2:-1])
-        uri = f'/products/{product_code}/electricity-tariffs/{tariff_code}'
-        data = self.get(uri + '/standard-unit-rates/?page_size=2')
-        prices = [round(d[key], 1) for d in data['results']]
-        return Rates(min(prices), max(prices))
-
-    def current_gas_rates(self, account, key='value_inc_vat'):
-        return self.current_unit_rates(account, 'gas_meter_points', key)
-
-    def current_electricity_rates(self, account, key='value_inc_vat'):
-        return self.current_unit_rates(account, 'electricity_meter_points', key)
-
 
 class OctopusGraphQLClient:
 

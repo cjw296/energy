@@ -65,8 +65,6 @@ def main():
     graphql_client = OctopusGraphQLClient(api_key)
     dumper = DiffDumper(Path(config.directories.storage).expanduser(), prefix='octopus-dispatches')
 
-    rates = rest_client.current_electricity_rates(account)
-
     run = Run(get_octopus_dispatches)(graphql_client, account, dumper)
 
     if args.run_every:
