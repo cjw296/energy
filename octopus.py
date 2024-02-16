@@ -68,7 +68,7 @@ class OctopusGraphQLClient:
     def __init__(self, api_key):
         self._api_key = api_key
         self._transport = AIOHTTPTransport(BASE_URL + "/graphql/", headers={})
-        self._client = Client(transport=self._transport, fetch_schema_from_transport=True)
+        self._client = Client(transport=self._transport)
 
     def _query(self, operation_name: str, query: str, params: dict[str, Any]) -> dict[str, Any]:
         return self._client.execute(
