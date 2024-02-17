@@ -22,7 +22,7 @@ def record_octopus_dispatches(
     unit_rates = graphql_client.unit_rates(account)
     logging.info(pformat(dispatches))
     dumper.update(
-        {'now': datetime.now().isoformat(), 'dispatches': dispatches, 'unit_rates': unit_rates}
+        {'dispatches': dispatches, 'unit_rates': unit_rates}
     )
 
 
