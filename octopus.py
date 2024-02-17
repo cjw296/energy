@@ -78,7 +78,7 @@ class OctopusGraphQLClient:
     def obtain_token(self) -> str:
         result = self._query(
             "krakenTokenAuthentication",
-            query = (
+            query=(
                 '''
                   mutation krakenTokenAuthentication($apiKey: String!) {
                     obtainKrakenToken(input: { APIKey: $apiKey })
@@ -87,13 +87,15 @@ class OctopusGraphQLClient:
                     }
                   }
                 '''),
-            params = {"apiKey": self._api_key},
+            params={"apiKey": self._api_key},
         )
         return result['obtainKrakenToken']['token']
 
     def set_token(self):
         logging.debug('setting token')
-        self._transport.headers['Authorization'] = self.obtain_token()
+        headers = self._transport.headers
+        headers.pop('Authorization', None)
+        headers['Authorization'] = self.obtain_token()
 
     def query(self, operation_name: str, query: str, params: dict[str, Any]) -> dict[str, Any]:
         if 'Authorization' not in self._transport.headers:
@@ -101,10 +103,12 @@ class OctopusGraphQLClient:
         try:
             return self._query(operation_name, query, params)
         except TransportQueryError as e:
-            if e.errors[0]['message'] == 'Signature of the JWT has expired.':
+            message = e.errors[0]['message']
+            if message == 'Signature of the JWT has expired.':
                 self.set_token()
                 return self._query(operation_name, query, params)
             else:
+                e.add_node(f'message was: {message!r}')
                 raise
 
     def dispatches(self, account: str) -> dict[str, list[dict[str, Any]]]:
