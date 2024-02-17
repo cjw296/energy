@@ -9,4 +9,4 @@ pendulum
 requests
 watchdog
 tesla-api
-
+colorama
