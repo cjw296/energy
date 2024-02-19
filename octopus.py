@@ -139,7 +139,7 @@ class OctopusGraphQLClient:
             params={"accountNumber": account},
         )
 
-    def unit_rates(self, account: str) -> list[dict[str, Any]]:
+    def tariff(self, account: str) -> dict:
         data = self.query(
             'getProperties',
             query="""
@@ -150,6 +150,10 @@ class OctopusGraphQLClient:
                          validTo
                          tariff {
                             ... on HalfHourlyTariff {
+                              productCode
+                              tariffCode
+                              fullName
+                              displayName
                               unitRates {
                                 value
                                 validTo
@@ -164,6 +168,6 @@ class OctopusGraphQLClient:
             params={'accountNumber': account}
         )
         agreement, = data['account']['electricityAgreements']
-        return agreement['tariff']['unitRates']
+        return agreement['tariff']
 
 

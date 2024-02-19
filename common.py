@@ -1,3 +1,4 @@
+import difflib
 import json
 import logging
 import re
@@ -7,7 +8,7 @@ from dataclasses import dataclass
 from datetime import timedelta, datetime
 from pathlib import Path
 from time import sleep
-from typing import Callable, Iterator, ParamSpec, Self
+from typing import Callable, Iterator, ParamSpec, Self, Any
 
 from configurator import Config
 from pandas import Timestamp, date_range, to_datetime
@@ -127,6 +128,7 @@ class DiffDumper:
 P = ParamSpec('P')
 timedelta_P = ParamSpec('timedelta_P', bound=timedelta)
 
+
 class Run:
 
     def __init__(self, callable_: Callable[P, None]):
@@ -153,3 +155,12 @@ class Run:
                 sleep(delay)
         except KeyboardInterrupt:
             pass
+
+
+def diff(a: Any, b: Any, a_label: str = '', b_label: str = ''):
+    return ''.join(difflib.unified_diff(
+        str(a).splitlines(keepends=True),
+        str(b).splitlines(keepends=True),
+        a_label,
+        b_label
+    ))
