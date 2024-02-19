@@ -13,4 +13,3 @@ myenergi:
   api_key: "from https://support.myenergi.com/hc/en-gb/articles/5069627351185-How-do-I-get-an-API-key-"
 tesla:
   email: ""
-  installation_time_zone: "Europe/London"

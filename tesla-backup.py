@@ -6,6 +6,7 @@ from configurator import Config
 from teslapy import Tesla
 
 from common import add_log_level, configure_logging
+from tesla import battery_site_config
 
 
 def main():
@@ -21,7 +22,7 @@ def main():
     tesla = Tesla(config.tesla.email)
     battery, = tesla.battery_list()
 
-    info = battery.api('SITE_CONFIG')['response']
+    info = battery_site_config(battery)
     logging.debug(f'{info=}')
     backup_reserve_percent = info['backup_reserve_percent']
     grid_limit = info['max_site_meter_power_ac']

@@ -9,7 +9,7 @@ from typing import Iterator
 from configurator import Config
 from pandas import Timestamp, Timedelta, date_range
 from requests import HTTPError
-from teslapy import Tesla
+from teslapy import Tesla, Battery
 
 from common import main, collect, json_from_paths
 
@@ -73,10 +73,10 @@ def check_measurement_count(data, end_date):
 
 def download(config: Config, start: Timestamp, end: Timestamp, root: Path) -> None:
     tesla = Tesla(config.tesla.email)
-    installation_time_zone = config.tesla.installation_time_zone
     for i, battery in enumerate(call_with_retry(tesla.battery_list)):
         assert i == 0, 'more than one battery found!'
-        for date, end_date in tesla_end_dates(start, end, installation_time_zone):
+        installation_time_zone_ = installation_time_zone(battery)
+        for date, end_date in tesla_end_dates(start, end, installation_time_zone_):
             data = call_with_retry(
                 battery.get_calendar_history_data,
                 kind='power',
@@ -112,6 +112,14 @@ def json_to_csv(config: Config, start: Timestamp, end: Timestamp, root: Path) ->
                 writer.writerow(row)
 
         logging.info(f'Wrote {csv_path}')
+
+
+def battery_site_config(battery: Battery) -> dict:
+    return battery.api('SITE_CONFIG')['response']
+
+
+def installation_time_zone(battery: Battery) -> str:
+    return battery_site_config(battery)['installation_time_zone']
 
 
 if __name__ == '__main__':
