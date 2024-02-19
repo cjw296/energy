@@ -1,30 +1,14 @@
 import logging
 from argparse import ArgumentParser
-from datetime import datetime
 from pathlib import Path
-from pprint import pformat
 
 from configurator import Config
 from gql.transport.aiohttp import log as gql_logger
 from teslapy import Tesla
 
-from common import DiffDumper, add_log_level, configure_logging, Run
-from octopus import OctopusGraphQLClient
+from common import DiffDumper, add_log_level, configure_logging
 
 gql_logger.setLevel(logging.WARNING)
-
-
-def record_octopus_dispatches(
-        graphql_client: OctopusGraphQLClient,
-        account: str,
-        dumper: DiffDumper,
-):
-    dispatches = graphql_client.dispatches(account)
-    unit_rates = graphql_client.unit_rates(account)
-    logging.info(pformat(dispatches))
-    dumper.update(
-        {'now': datetime.now().isoformat(), 'dispatches': dispatches, 'unit_rates': unit_rates}
-    )
 
 
 def main():
