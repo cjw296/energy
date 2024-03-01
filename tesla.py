@@ -5,6 +5,7 @@ from datetime import timedelta
 from pathlib import Path
 from time import sleep
 from typing import Iterator
+from zoneinfo import ZoneInfo
 
 from configurator import Config
 from pandas import Timestamp, Timedelta, date_range
@@ -14,7 +15,7 @@ from teslapy import Tesla, Battery
 from common import main, collect, json_from_paths
 
 
-def with_tz(dt: Timestamp, tz: str) -> Timestamp:
+def with_tz(dt: Timestamp, tz: ZoneInfo) -> Timestamp:
     return Timestamp(year=dt.year, month=dt.month, day=dt.day, unit='m', tz=tz)
 
 
@@ -22,7 +23,9 @@ def tesla_formatted_dt(dt: Timestamp) -> str:
     return dt.isoformat()
 
 
-def tesla_end_dates(start: Timestamp, end: Timestamp, tz: str) -> Iterator[tuple[Timestamp, Timestamp]]:
+def tesla_end_dates(
+        start: Timestamp, end: Timestamp, tz: ZoneInfo
+) -> Iterator[tuple[Timestamp, Timestamp]]:
     current = with_tz(min(start, end), tz)
     end = with_tz(max(start, end), tz)
     while current <= end:
@@ -118,8 +121,8 @@ def battery_site_config(battery: Battery) -> dict:
     return battery.api('SITE_CONFIG')['response']
 
 
-def installation_time_zone(battery: Battery) -> str:
-    return battery_site_config(battery)['installation_time_zone']
+def installation_time_zone(battery: Battery) -> ZoneInfo:
+    return ZoneInfo(battery_site_config(battery)['installation_time_zone'])
 
 
 if __name__ == '__main__':
