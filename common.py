@@ -69,9 +69,13 @@ def configure_logging(log_level: str) -> None:
     logging.raiseExceptions = False
 
 
+def root_from(config: Config) -> Path:
+    return Path(config.directories.storage).expanduser()
+
+
 def main(actions: ActionMapping, pattern) -> None:
     config = Config.from_path('config.yaml')
-    root = Path(config.directories.storage).expanduser()
+    root = root_from(config)
 
     parser = ArgumentParser()
     parser.add_argument('action', choices=actions.keys())

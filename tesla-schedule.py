@@ -6,7 +6,7 @@ from configurator import Config
 from gql.transport.aiohttp import log as gql_logger
 from teslapy import Tesla
 
-from common import DiffDumper, add_log_level, configure_logging
+from common import DiffDumper, add_log_level, configure_logging, root_from
 
 gql_logger.setLevel(logging.WARNING)
 
@@ -21,7 +21,7 @@ def main():
     config = Config.from_path('config.yaml')
     tesla = Tesla(config.tesla.email)
     battery, = tesla.battery_list()
-    dumper = DiffDumper(Path(config.directories.storage).expanduser(), prefix='tesla-schedule')
+    dumper = DiffDumper(root_from(config), prefix='tesla-schedule')
     tariff = battery.get_tariff()
     logging.info(tariff)
     dumper.update(tariff)

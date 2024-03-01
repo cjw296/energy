@@ -7,6 +7,7 @@ import pendulum
 from configurator import Config
 from pandas import DataFrame
 
+from common import root_from
 from loaders import load_octopus, load_tesla
 
 loaders = {
@@ -60,7 +61,7 @@ def bill(start, end, df, standing, normal, cheap, vat=1.05):
 
 if __name__ == '__main__':
     config = Config.from_path('config.yaml')
-    storage = Path(config.directories.storage).expanduser()
+    storage = root_from(config)
     args = parse_args()
     data = load_data(args.start, args.end, storage, loaders[args.source])
     if args.csv:

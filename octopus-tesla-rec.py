@@ -6,6 +6,7 @@ import pendulum
 from configurator import Config
 from pendulum import DateTime, Date
 
+from common import root_from
 from loaders import load_octopus, load_tesla
 
 
@@ -41,7 +42,7 @@ def reconcile(storage: Path, date: Date, threshold: float):
 
 if __name__ == '__main__':
     config = Config.from_path('config.yaml')
-    storage = Path(config.directories.storage).expanduser()
+    storage = root_from(config)
     args = parse_args()
     if args.date:
         dates = [args.date.date()]

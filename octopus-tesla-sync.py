@@ -9,7 +9,7 @@ from configurator import Config
 from gql.transport.aiohttp import log as gql_logger
 from teslapy import Tesla, Battery
 
-from common import DiffDumper, add_log_level, configure_logging, Run, diff
+from common import DiffDumper, add_log_level, configure_logging, Run, diff, root_from
 from octopus import OctopusGraphQLClient
 
 gql_logger.setLevel(logging.WARNING)
@@ -103,7 +103,7 @@ def main():
     configure_logging(args.log_level)
 
     config = Config.from_path('config.yaml')
-    storage = Path(config.directories.storage).expanduser()
+    storage = root_from(config)
     api_key = config.octopus.api_key
     account = config.octopus.account
 

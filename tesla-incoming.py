@@ -7,6 +7,8 @@ from configurator import Config
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
+from common import root_from
+
 FILENAME = 'data.csv'  # yeah, thanks Tesla...
 
 
@@ -36,7 +38,7 @@ class IncomingEventHandler(FileSystemEventHandler):
 if __name__ == "__main__":
     config = Config.from_path('config.yaml')
     source_dir = Path(config.directories.incoming).expanduser()
-    dest = Path(config.directories.storage).expanduser()
+    dest = root_from(config)
 
     path = source_dir / FILENAME
     if path.exists():
