@@ -1,4 +1,5 @@
 import difflib
+import shlex
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -41,7 +42,7 @@ def extract(path: Path) -> DiffData:
     parts = path.name.rsplit('-', DASH_COUNT)
     d = datetime.strptime('-'.join(parts[1:]), "%Y-%m-%d-%H-%M-%S.json")
     return DiffData(
-        f'{path.name} ({d:%a %d %b %y %H:%M:%S})',
+        f'{shlex.quote(str(path))} ({d:%a %d %b %y %H:%M:%S})',
         path.read_text().splitlines(keepends=True)
     )
 
