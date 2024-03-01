@@ -40,8 +40,19 @@ class TimestampArg:
             return Timestamp.now()
         index = self.name_to_index.get(text)
         if index is not None:
-            paths = self.root.glob(re.sub(r'%.', '*', self.pattern))
-            possible = sorted(to_datetime(p.name, format=self.pattern) for p in paths)
+            pattern = re.sub(r'%.', '*', self.pattern)
+            paths = self.root.glob(pattern)
+            if not paths:
+                raise ValueError(f'No paths found matching {pattern} at {self.root}')
+            possible = []
+            for p in paths:
+                try:
+                    dt = to_datetime(p.name, format=self.pattern)
+                except ValueError:
+                    pass
+                else:
+                    possible.append(dt)
+            possible.sort()
             return possible[index]
         return Timestamp(text)
 
