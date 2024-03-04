@@ -49,7 +49,10 @@ def make_seasons_and_energy_charges(
         if dispatch['meta']['source'] == 'smart-charge':
             schedule.add(Timestamp(dispatch["startDtUtc"]), Timestamp(dispatch["endDtUtc"]), cheap)
 
-    summer_tou_periods = defaultdict(list)
+    summer_tou_periods = {
+        EXPENSIVE_KEY: [],
+        CHEAP_KEY: [],
+    }
     for slot in schedule.final_times(timezone):
         summer_tou_periods[labels[slot.cost]].append({
             'fromDayOfWeek': 0,
