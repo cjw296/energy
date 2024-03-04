@@ -128,7 +128,7 @@ class DiffDumper:
         sources = sorted(self.target.glob(f"{self.prefix}*.json"))
         if sources:
             latest = sources[-1]
-            logging.debug(f'{latest=}')
+            logging.info(f'{latest=}')
             return json.loads(latest.read_text())
 
     def update(self, state):
@@ -136,7 +136,7 @@ class DiffDumper:
             logging.debug(f"state changed for {self.prefix}")
             dest = self.target / f"{self.prefix}-{datetime.now():%Y-%m-%d-%H-%M-%S}.json"
             dest.write_text(json.dumps(state, indent=4))
-            logging.debug(f'wrote {dest}')
+            logging.info(f'wrote {dest}')
             self.state = state
 
 
