@@ -45,7 +45,7 @@ class Syncer:
 
         # get the octopus tariff
         tariff = self.graphql_client.tariff(self.account)
-        logging.info(pformat(tariff))
+        logging.debug(pformat(tariff))
         unit_rates_schedule = tariff.pop('unitRates')
 
         # dump to json if things have changed:
