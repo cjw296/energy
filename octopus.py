@@ -1,12 +1,18 @@
 import logging
+from collections import deque
 from dataclasses import dataclass
+from datetime import datetime, timedelta, time
+from decimal import Decimal
+from itertools import chain
 from pprint import pformat
-from typing import Any
+from typing import Any, Iterable
+from zoneinfo import ZoneInfo
 
 import requests
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport
 from gql.transport.exceptions import TransportQueryError
+from pandas import Timestamp, date_range, Timedelta
 from requests import JSONDecodeError
 
 
@@ -171,3 +177,90 @@ class OctopusGraphQLClient:
         return agreement['tariff']
 
 
+@dataclass
+class ScheduleEntry:
+    start: Timestamp
+    end: Timestamp
+    cost: float
+
+
+@dataclass
+class TimeSlot:
+    start: time
+    end: time
+    cost: float
+
+
+SLOT_SIZE = Timedelta(minutes=30)
+
+
+def timestamp_on_different_day(initial: Timestamp, offset: int) -> Timestamp:
+    return Timestamp.combine(
+        initial.date() + Timedelta(days=offset), initial.time()
+    ).replace(tzinfo=initial.tzinfo)
+
+
+class Schedule:
+
+    def __init__(self, now: Timestamp):
+        assert now.tzinfo is not None
+        self._start = now.floor('30min', ambiguous=bool(now.fold))
+        self._end = timestamp_on_different_day(self._start, offset=1)
+        self._entries: dict[Timestamp, float | None] = {
+            d: None for d in date_range(
+                start=self._start,
+                end=self._end,
+                freq=SLOT_SIZE,
+                inclusive='left',
+            )
+        }
+
+    def add(self, start: Timestamp, end: Timestamp, cost: float) -> None:
+        assert start.tzinfo is not None
+        assert end.tzinfo is not None
+        assert end > start, f'{end} <= {start}'
+
+        if end < self._start or start > self._end:
+            return
+
+        current = max(start.floor('30min', ambiguous=bool(start)), self._start)
+        while current < min(end.ceil('30min', ambiguous=bool(end.fold)), self._end):
+            assert current in self._entries, current
+            self._entries[current] = cost
+            current += SLOT_SIZE
+
+    @staticmethod
+    def _compress(items: Iterable[tuple[Timestamp, float]]) -> list[ScheduleEntry]:
+        missing = []
+        current: ScheduleEntry | None = None
+        for start, cost in items:
+            if cost is None:
+                missing.append(start)
+            elif current is None or cost != current.cost:
+                # Needed for DST transition days:
+                if current is not None:
+                    current.end = start
+                current = ScheduleEntry(start, start+SLOT_SIZE, cost)
+                yield current
+            else:
+                current.end = start + SLOT_SIZE
+        if missing:
+            raise ValueError(f'Gaps in schedule: {[str(m) for m in missing]}')
+
+    def final(self) -> list[ScheduleEntry]:
+        return list(self._compress(self._entries.items()))
+
+    def final_times(self, tz: ZoneInfo | None = None) -> list[TimeSlot]:
+        midnight = (self._start if tz is None else self._start.astimezone(tz)).ceil('1D')
+        before = []
+        after = []
+        print()
+        for start, cost in self._entries.items():
+            start = start.astimezone(tz) if tz is not None else start
+            if start >= midnight:
+                start = timestamp_on_different_day(start, offset=-1)
+                before.append((start, cost))
+            else:
+                after.append((start, cost))
+        schedule = list(self._compress(chain(before, after)))
+        return [TimeSlot(e.start.time(), e.end.time(), e.cost) for e in schedule]
