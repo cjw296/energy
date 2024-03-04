@@ -69,6 +69,8 @@ class Syncer:
         )
         # update the tariff via the tesla API if it's changed:
         if self.tesla_tariff != required_tariff or self.force:
+            planned_dispatches = dispatches['plannedDispatches']
+            logging.info(f'Planned dispatches:\n{pformat(planned_dispatches, sort_dicts=False)}')
             self.battery.set_tariff(required_tariff)
             diff_text = diff(self.tesla_tariff, required_tariff, )
             logging.info(f'Tesla tariff updated:\n{diff_text}')
