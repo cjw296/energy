@@ -2,25 +2,21 @@ import logging
 from argparse import ArgumentParser
 from copy import deepcopy
 from dataclasses import dataclass
-from pathlib import Path
+from datetime import datetime
 from pprint import pformat
+from zoneinfo import ZoneInfo
 
 from configurator import Config
 from gql.transport.aiohttp import log as gql_logger
+from pandas import Timestamp
 from teslapy import Tesla, Battery
 
 from common import DiffDumper, add_log_level, configure_logging, Run, diff, root_from
 from octopus import OctopusGraphQLClient
+from tesla import installation_time_zone
+from schedule import make_seasons_and_energy_charges
 
 gql_logger.setLevel(logging.WARNING)
-
-
-CHEAP_KEY = "SUPER_OFF_PEAK"
-EXPENSIVE_KEY = "ON_PEAK"
-
-
-def price_in_pounds(price_in_pence: float) -> float:
-    return round(price_in_pence/100, 2)
 
 
 def make_demand_charges() -> dict:
@@ -33,39 +29,23 @@ def make_demand_charges() -> dict:
     }
 
 
-def make_energy_charges(cheap: float, expensive: float):
-    return {
-        "ALL": {
-            "ALL": 0
-        },
-        "Summer": {
-            EXPENSIVE_KEY: price_in_pounds(expensive),
-            CHEAP_KEY: price_in_pounds(cheap),
-        },
-        "Winter": {}
-    }
-
-
 @dataclass
 class Syncer:
     graphql_client: OctopusGraphQLClient
     account: str
     dumper: DiffDumper | None
     battery: Battery
+    timezone: ZoneInfo
     tesla_tariff: dict | None = None
 
     def __call__(self):
+        now = Timestamp(datetime.now().astimezone())
         dispatches = self.graphql_client.dispatches(self.account)
 
         # get the octopus tariff
         tariff = self.graphql_client.tariff(self.account)
         logging.info(pformat(tariff))
         unit_rates_schedule = tariff.pop('unitRates')
-
-        # figure out what the prices are:
-        unit_rates = sorted({float(r['value']) for r in unit_rates_schedule})
-        assert len(unit_rates) == 2, f'Unexpected number of rates: {unit_rates}'
-        cheap, expensive = unit_rates
 
         # dump to json if things have changed:
         if self.dumper is not None:
@@ -83,8 +63,9 @@ class Syncer:
         required_tariff['utility'] = 'Octopus'
         required_tariff['name'] = tariff['fullName']
         required_tariff['demand_charges'] = make_demand_charges()
-        required_tariff['energy_charges'] = make_energy_charges(cheap, expensive)
-
+        required_tariff.update(
+            make_seasons_and_energy_charges(now, unit_rates_schedule, dispatches, self.timezone)
+        )
         # update the tariff via the tesla API if it's changed:
         if self.tesla_tariff != required_tariff:
             self.battery.set_tariff(required_tariff)
@@ -113,7 +94,7 @@ def main():
     tesla = Tesla(config.tesla.email)
     battery, = tesla.battery_list()
 
-    syncer = Syncer(graphql_client, account, dumper, battery)
+    syncer = Syncer(graphql_client, account, dumper, battery, installation_time_zone(battery))
 
     run = Run(syncer)
 
