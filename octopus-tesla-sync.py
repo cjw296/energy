@@ -36,6 +36,7 @@ class Syncer:
     dumper: DiffDumper | None
     battery: Battery
     timezone: ZoneInfo
+    force: bool
     tesla_tariff: dict | None = None
 
     def __call__(self):
@@ -67,7 +68,7 @@ class Syncer:
             make_seasons_and_energy_charges(now, unit_rates_schedule, dispatches, self.timezone)
         )
         # update the tariff via the tesla API if it's changed:
-        if self.tesla_tariff != required_tariff:
+        if self.tesla_tariff != required_tariff or self.force:
             self.battery.set_tariff(required_tariff)
             diff_text = diff(self.tesla_tariff, required_tariff, )
             logging.info(f'Tesla tariff updated:\n{diff_text}')
@@ -79,6 +80,7 @@ def main():
     add_log_level(parser)
     parser.add_argument('--run-every', type=int)
     parser.add_argument('--no-dump', action='store_false', dest='dump')
+    parser.add_argument('--force', action='store_true')
 
     args = parser.parse_args()
     configure_logging(args.log_level)
@@ -94,7 +96,9 @@ def main():
     tesla = Tesla(config.tesla.email)
     battery, = tesla.battery_list()
 
-    syncer = Syncer(graphql_client, account, dumper, battery, installation_time_zone(battery))
+    syncer = Syncer(
+        graphql_client, account, dumper, battery, installation_time_zone(battery), args.force
+    )
 
     run = Run(syncer)
 
