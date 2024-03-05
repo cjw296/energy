@@ -36,6 +36,7 @@ class Syncer:
     dumper: DiffDumper | None
     battery: Battery
     timezone: ZoneInfo
+    sync: bool
     force: bool
     tesla_tariff: dict | None = None
 
@@ -54,6 +55,10 @@ class Syncer:
                 {'dispatches': dispatches, 'unit_rates': unit_rates_schedule, 'agreement': tariff},
                 force=self.force
             )
+
+        if not self.sync:
+            logging.warning('not updating Tesla schedule!')
+            return
 
         # get the current tesla tariff config:
         if not self.tesla_tariff:
@@ -83,6 +88,7 @@ def main():
     add_log_level(parser)
     parser.add_argument('--run-every', type=int)
     parser.add_argument('--no-dump', action='store_false', dest='dump')
+    parser.add_argument('--no-sync', action='store_false', dest='sync', help='never sync')
     parser.add_argument('--force', action='store_true', help='force dump and sync')
 
     args = parser.parse_args()
@@ -100,7 +106,13 @@ def main():
     battery, = tesla.battery_list()
 
     syncer = Syncer(
-        graphql_client, account, dumper, battery, installation_time_zone(battery), args.force
+        graphql_client,
+        account,
+        dumper,
+        battery,
+        installation_time_zone(battery),
+        args.sync,
+        args.force,
     )
 
     run = Run(syncer)
