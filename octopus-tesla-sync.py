@@ -29,7 +29,7 @@ def make_demand_charges() -> dict:
     }
 
 
-@dataclass
+@dataclass(repr=False)
 class Syncer:
     graphql_client: OctopusGraphQLClient
     account: str
