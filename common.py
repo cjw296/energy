@@ -131,8 +131,8 @@ class DiffDumper:
             logging.info(f'{latest=}')
             return json.loads(latest.read_text())
 
-    def update(self, state):
-        if self.state != state:
+    def update(self, state, force: bool = False):
+        if force or self.state != state:
             logging.debug(f"state changed for {self.prefix}")
             dest = self.target / f"{self.prefix}-{datetime.now():%Y-%m-%d-%H-%M-%S}.json"
             dest.write_text(json.dumps(state, indent=4))

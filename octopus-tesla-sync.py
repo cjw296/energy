@@ -51,7 +51,8 @@ class Syncer:
         # dump to json if things have changed:
         if self.dumper is not None:
             self.dumper.update(
-                {'dispatches': dispatches, 'unit_rates': unit_rates_schedule, 'agreement': tariff}
+                {'dispatches': dispatches, 'unit_rates': unit_rates_schedule, 'agreement': tariff},
+                force=self.force
             )
 
         # get the current tesla tariff config:
@@ -82,7 +83,7 @@ def main():
     add_log_level(parser)
     parser.add_argument('--run-every', type=int)
     parser.add_argument('--no-dump', action='store_false', dest='dump')
-    parser.add_argument('--force', action='store_true')
+    parser.add_argument('--force', action='store_true', help='force dump and sync')
 
     args = parser.parse_args()
     configure_logging(args.log_level)
