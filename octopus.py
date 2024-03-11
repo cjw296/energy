@@ -204,12 +204,12 @@ class Schedule:
 
     def __init__(self, now: Timestamp):
         assert now.tzinfo is not None
-        self._start = now.floor('30min', ambiguous=bool(now.fold))
-        self._end = timestamp_on_different_day(self._start, offset=1)
-        self._entries: dict[Timestamp, float | None] = {
+        self.start = now.floor('30min', ambiguous=bool(now.fold))
+        self.end = timestamp_on_different_day(self.start, offset=1)
+        self.entries: dict[Timestamp, float | None] = {
             d: None for d in date_range(
-                start=self._start,
-                end=self._end,
+                start=self.start,
+                end=self.end,
                 freq=SLOT_SIZE,
                 inclusive='left',
             )
@@ -220,13 +220,13 @@ class Schedule:
         assert end.tzinfo is not None
         assert end > start, f'{end} <= {start}'
 
-        if end < self._start or start > self._end:
+        if end < self.start or start > self.end:
             return
 
-        current = max(start.floor('30min', ambiguous=bool(start)), self._start)
-        while current < min(end.ceil('30min', ambiguous=bool(end.fold)), self._end):
-            assert current in self._entries, current
-            self._entries[current] = cost
+        current = max(start.floor('30min', ambiguous=bool(start)), self.start)
+        while current < min(end.ceil('30min', ambiguous=bool(end.fold)), self.end):
+            assert current in self.entries, current
+            self.entries[current] = cost
             current += SLOT_SIZE
 
     @staticmethod
@@ -248,14 +248,14 @@ class Schedule:
             raise ValueError(f'Gaps in schedule: {[str(m) for m in missing]}')
 
     def final(self) -> list[ScheduleEntry]:
-        return list(self._compress(self._entries.items()))
+        return list(self._compress(self.entries.items()))
 
     def final_times(self, tz: ZoneInfo | None = None) -> list[TimeSlot]:
-        midnight = (self._start if tz is None else self._start.astimezone(tz)).ceil('1D')
+        midnight = (self.start if tz is None else self.start.astimezone(tz)).ceil('1D')
         before = []
         after = []
         print()
-        for start, cost in self._entries.items():
+        for start, cost in self.entries.items():
             start = start.astimezone(tz) if tz is not None else start
             if start >= midnight:
                 start = timestamp_on_different_day(start, offset=-1)
