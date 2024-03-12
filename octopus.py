@@ -254,7 +254,6 @@ class Schedule:
         midnight = (self.start if tz is None else self.start.astimezone(tz)).ceil('1D')
         before = []
         after = []
-        print()
         for start, cost in self.entries.items():
             start = start.astimezone(tz) if tz is not None else start
             if start >= midnight:
