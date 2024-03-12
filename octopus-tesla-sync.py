@@ -42,7 +42,11 @@ class Syncer:
 
     def __call__(self):
         now = Timestamp(datetime.now().astimezone())
-        dispatches = self.graphql_client.dispatches(self.account)
+        try:
+            dispatches = self.graphql_client.dispatches(self.account)
+        except TimeoutError:
+            logging.error('Timeout getting dispatches')
+            return
 
         # get the octopus tariff
         tariff = self.graphql_client.tariff(self.account)
