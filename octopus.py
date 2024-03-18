@@ -114,7 +114,7 @@ class OctopusGraphQLClient:
                 self.set_token()
                 return self._query(operation_name, query, params)
             else:
-                e.add_node(f'message was: {message!r}')
+                e.add_note(f'message was: {message!r}')
                 raise
 
     def dispatches(self, account: str) -> dict[str, list[dict[str, Any]]]:
