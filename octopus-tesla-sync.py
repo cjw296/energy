@@ -49,7 +49,12 @@ class Syncer:
             return
 
         # get the octopus tariff
-        tariff = self.graphql_client.tariff(self.account)
+        try:
+            tariff = self.graphql_client.tariff(self.account)
+        except TimeoutError:
+            logging.error('Timeout getting tariff')
+            return
+
         logging.debug(pformat(tariff))
         unit_rates_schedule = tariff.pop('unitRates')
 
