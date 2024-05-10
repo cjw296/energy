@@ -36,7 +36,7 @@ class TimestampArg:
     }
 
     def __call__(self, text: str) -> Timestamp:
-        if text=='now':
+        if text == 'now':
             return Timestamp.now()
         index = self.name_to_index.get(text)
         if index is not None:
