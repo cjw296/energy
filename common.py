@@ -6,11 +6,13 @@ import sys
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from datetime import timedelta, datetime
+from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 from pathlib import Path
 from time import sleep
 from typing import Callable, Iterator, ParamSpec, Self, Any
 
 from configurator import Config
+from mailinglogger import MailingLogger
 from pandas import Timestamp, date_range, to_datetime
 
 Action = Callable[[Config, Timestamp, Timestamp, Path], None]
@@ -67,17 +69,46 @@ def add_log_level(parser):
     parser.add_argument('--log-level',
                         choices=[name.lower() for name in LOG_LEVELS],
                         default='info')
+    parser.add_argument('--unattended', action='store_true')
 
 
-def configure_logging(log_level: str) -> None:
+def configure_logging(log_level: str, unattended: bool = False) -> None:
+    line_format = "%(asctime)s %(levelname)s:%(name)s:%(message)s"
+    date_format = '%Y-%m-%d %H:%M:%S'
+    stdout_level = LOG_LEVELS[log_level.upper()]
     logging.basicConfig(
-        format="%(asctime)s %(levelname)s:%(name)s:%(message)s",
-        datefmt='%Y-%m-%d %H:%M:%S',
-        level=LOG_LEVELS[log_level.upper()],
+        format=line_format,
+        datefmt=date_format,
+        level=stdout_level,
         stream=sys.stdout,
         force=True
     )
     logging.raiseExceptions = False
+    if unattended:
+        script_name = sys.argv[0]
+        root = logging.getLogger()
+        root.handlers[0].setLevel(stdout_level)
+        root.setLevel(logging.DEBUG)
+        # file logging
+        handler = TimedRotatingFileHandler(
+            Path(script_name).with_suffix('.log'),
+            backupCount=7,
+            when='midnight',
+        )
+        handler.setLevel(logging.DEBUG)
+        handler.setFormatter(logging.Formatter(line_format, date_format))
+        root.addHandler(handler)
+        # email alerts
+        handler = MailingLogger(
+            'support@simplistix.co.uk',
+            ['chris@withers.org'],
+            subject=f'[{script_name}] %(levelname)s: %(line)s',
+            flood_level=1,
+        )
+        handler.setLevel(logging.WARNING)
+        root.addHandler(handler)
+        # quieten down some debug logging:
+        logging.getLogger('requests_oauthlib').setLevel(logging.WARNING)
 
 
 def root_from(config: Config) -> Path:

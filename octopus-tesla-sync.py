@@ -45,14 +45,14 @@ class Syncer:
         try:
             dispatches = self.graphql_client.dispatches(self.account)
         except TimeoutError:
-            logging.error('Timeout getting dispatches')
+            logging.warning('Timeout getting dispatches')
             return
 
         # get the octopus tariff
         try:
             tariff = self.graphql_client.tariff(self.account)
         except TimeoutError:
-            logging.error('Timeout getting tariff')
+            logging.warning('Timeout getting tariff')
             return
 
         logging.debug(pformat(tariff))
@@ -101,7 +101,7 @@ def main():
     parser.add_argument('--force', action='store_true', help='force dump and sync')
 
     args = parser.parse_args()
-    configure_logging(args.log_level)
+    configure_logging(args.log_level, args.unattended)
 
     config = Config.from_path('config.yaml')
     storage = root_from(config)

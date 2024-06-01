@@ -2,6 +2,7 @@ TeslaPy
 camelot-py
 configurator[yaml]
 gql[all]
+mailinglogger
 matplotlib
 notebook
 pandas
