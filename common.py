@@ -106,7 +106,7 @@ def configure_logging(log_level: str, unattended: bool = False) -> None:
             subject=f'[{script_name}] %(levelname)s: %(line)s',
             flood_level=1,
         )
-        handler.setLevel(logging.WARNING)
+        handler.setLevel(logging.ERROR)
         root.addHandler(handler)
         # quieten down some debug logging:
         logging.getLogger('requests_oauthlib').setLevel(logging.WARNING)
