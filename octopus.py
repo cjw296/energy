@@ -15,6 +15,8 @@ from gql.transport.exceptions import TransportQueryError
 from pandas import Timestamp, date_range, Timedelta
 from requests import JSONDecodeError
 
+from common import log_timeouts_and_return_none
+
 
 @dataclass
 class Rates:
@@ -117,6 +119,7 @@ class OctopusGraphQLClient:
                 e.add_note(f'message was: {message!r}')
                 raise
 
+    @log_timeouts_and_return_none
     def dispatches(self, account: str) -> dict[str, list[dict[str, Any]]]:
         return self.query(
             "getCombinedData",
@@ -145,6 +148,7 @@ class OctopusGraphQLClient:
             params={"accountNumber": account},
         )
 
+    @log_timeouts_and_return_none
     def tariff(self, account: str) -> dict:
         data = self.query(
             'getProperties',

@@ -6,10 +6,11 @@ import sys
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from datetime import timedelta, datetime
+from functools import wraps
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 from pathlib import Path
 from time import sleep
-from typing import Callable, Iterator, ParamSpec, Self, Any
+from typing import Callable, Iterator, ParamSpec, Self, Any, TypeVar
 
 from configurator import Config
 from mailinglogger import MailingLogger
@@ -172,6 +173,7 @@ class DiffDumper:
 
 
 P = ParamSpec('P')
+T = TypeVar('T')
 timedelta_P = ParamSpec('timedelta_P', bound=timedelta)
 
 
@@ -210,3 +212,18 @@ def diff(a: Any, b: Any, a_label: str = '', b_label: str = ''):
         a_label,
         b_label
     ))
+
+
+def log_timeouts_and_return_none(c: Callable[P, T]) -> Callable[P, T | None]:
+
+    @wraps(c)
+    def _run(*args: P.args, **kwargs: P.kwargs) -> T:
+        try:
+            return c(*args, **kwargs)
+        except TimeoutError:
+            message = f'Timeout getting {c.__name__}'
+            logging.warning(message)
+            logging.debug(message, exc_info=True)
+            return
+
+    return _run
