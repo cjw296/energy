@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC
 from zoneinfo import ZoneInfo
 
@@ -7,7 +8,6 @@ from octopus import Schedule
 
 CHEAP_KEY = "SUPER_OFF_PEAK"
 EXPENSIVE_KEY = "ON_PEAK"
-MAX_ALLOWABLE_MISSING_STANDARD_UNIT_RATES = Timedelta(hours=4)
 
 
 def price_in_pounds(price_in_pence: float) -> float:
@@ -60,11 +60,10 @@ def make_seasons_and_energy_charges(
     # fill in any future, expected gaps in the standard unit rate schedule:
     if max_valid_to < schedule.end:
         missing = schedule.end - max_valid_to
-        if missing > MAX_ALLOWABLE_MISSING_STANDARD_UNIT_RATES:
-            hours = missing.total_seconds() / (60*60)
-            raise ValueError(
-                f'Missing standard unit rates for {hours:.1f} hours from {max_valid_to}'
-            )
+        hours = missing.total_seconds() / (60*60)
+        logging.warning(
+            f'Missing standard unit rates for {hours:.1f} hours from {max_valid_to}'
+        )
         fill_value = expensive if value == cheap else expensive
         for start, existing_value in schedule.entries.items():
             if existing_value is None and start >= max_valid_to:
