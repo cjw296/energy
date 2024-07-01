@@ -68,7 +68,7 @@ def json_to_csv(config: Config, start: Timestamp, end: Timestamp, root: Path) ->
             assert date.strftime('%a') == row.pop('dow')
             row['datetime'] = date.isoformat()
             row['volts'] = row.get('v1', 0) / 10
-            for key in ('imp', 'h1b', 'exp'):
+            for key in ('imp', 'h1b', 'h1d', 'exp'):
                 joules = row.setdefault(key, 0)
                 row[f'{key}_kw'] = (joules / 60) / 1000
 
