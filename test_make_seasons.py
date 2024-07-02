@@ -38,16 +38,18 @@ SAMPLE_UNIT_RATES_29_FEB = [
 ]
 
 
-def expected_schedule(summer_tou_periods):
+def expected_schedule(summer_tou_periods, rates: dict[str, float] | None = None):
+    if rates is None:
+        rates = {
+            "ON_PEAK": 0.31,
+            "SUPER_OFF_PEAK": 0.07
+        }
     return {
         "energy_charges": {
             "ALL": {
                 "ALL": 0
             },
-            "Summer": {
-                "ON_PEAK": 0.31,
-                "SUPER_OFF_PEAK": 0.07
-            },
+            "Summer": rates,
             "Winter": {}
         },
         "seasons": {
@@ -293,3 +295,102 @@ def test_unit_rates_fall_too_much_short(logs: LogCapture):
             'Missing standard unit rates for 4.5 hours from 2024-03-06 05:30:00+00:00'
         ),
     )
+
+
+CHANGING_UNIT_RATES_RESPONSE = [
+        {
+            "value": 7.49994,
+            "validTo": "2024-06-30T04:30:00+00:00",
+            "validFrom": "2024-06-29T22:30:00+00:00"
+        },
+        {
+            "value": 27.274275,
+            "validTo": "2024-06-30T22:30:00+00:00",
+            "validFrom": "2024-06-30T04:30:00+00:00"
+        },
+        {
+            "value": 7.49994,
+            "validTo": "2024-06-30T23:00:00+00:00",
+            "validFrom": "2024-06-30T22:30:00+00:00"
+        },
+        {
+            "value": 6.00035,
+            "validTo": "2024-07-01T04:30:00+00:00",
+            "validFrom": "2024-06-30T23:00:00+00:00"
+        },
+        {
+            "value": 23.7132,
+            "validTo": "2024-07-01T22:30:00+00:00",
+            "validFrom": "2024-07-01T04:30:00+00:00"
+        },
+        {
+            "value": 6.00035,
+            "validTo": "2024-07-02T04:30:00+00:00",
+            "validFrom": "2024-07-01T22:30:00+00:00"
+        }
+    ]
+
+
+CHANGING_RATES_SCHEDULE = expected_schedule(
+    {
+        "ON_PEAK": [
+            {
+                "fromDayOfWeek": 0,
+                "toDayOfWeek": 6,
+                "fromHour": 11  ,
+                "fromMinute": 0,
+                "toHour": 23,
+                "toMinute": 30
+            }
+        ],
+        "SUPER_OFF_PEAK": [
+            {
+                "fromDayOfWeek": 0,
+                "toDayOfWeek": 6,
+                "fromHour": 23,
+                "fromMinute": 30,
+                "toHour": 0,
+                "toMinute": 0
+            },
+        ],
+        "NEW_SUPER_OFF_PEAK": [
+            {
+                'fromDayOfWeek': 0,
+                'fromHour': 0,
+                'fromMinute': 0,
+                'toDayOfWeek': 6,
+                'toHour': 5,
+                'toMinute': 30
+            },
+        ],
+        "NEW_ON_PEAK": [
+            {
+                'fromDayOfWeek': 0,
+                'fromHour': 5,
+                'fromMinute': 30,
+                'toDayOfWeek': 6,
+                'toHour': 11,
+                'toMinute': 0
+            },
+        ],
+    },
+    rates =  {
+        "ON_PEAK": 0.27,
+        "SUPER_OFF_PEAK": 0.07,
+        "NEW_ON_PEAK": 0.24,
+        "NEW_SUPER_OFF_PEAK": 0.06,
+    }
+)
+
+
+def test_unit_rates_changing():
+    actual = make_seasons_and_energy_charges(
+        now=Timestamp('2024-06-30T11:05:26', tz=London),
+        unit_rates_schedule=CHANGING_UNIT_RATES_RESPONSE,
+        dispatches={
+            "plannedDispatches": [],
+            "completedDispatches": []
+        },
+        timezone=London
+    )
+    compare(json.loads(json.dumps(actual)), expected=CHANGING_RATES_SCHEDULE)
