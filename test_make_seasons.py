@@ -263,7 +263,8 @@ def test_unit_rates_fall_a_bit_short():
     compare(json.loads(json.dumps(actual)), expected=BASIC_SCHEDULE)
 
 
-def test_unit_rates_fall_a_lot_short():
+@log_capture()
+def test_unit_rates_fall_a_lot_short(logs: LogCapture):
     actual = make_seasons_and_energy_charges(
         now=Timestamp('2024-03-05T09:54:41', tz=London),
         unit_rates_schedule=SHORT_UNIT_RATES_RESPONSE,
@@ -274,12 +275,13 @@ def test_unit_rates_fall_a_lot_short():
         timezone=London
     )
     compare(json.loads(json.dumps(actual)), expected=BASIC_SCHEDULE)
+    logs.check()
 
 
 @log_capture()
 def test_unit_rates_fall_too_much_short(logs: LogCapture):
     actual = make_seasons_and_energy_charges(
-            now=Timestamp('2024-03-05T10:15:30', tz=London),
+            now=Timestamp('2024-03-05T11:00:30', tz=London),
             unit_rates_schedule=SHORT_UNIT_RATES_RESPONSE,
             dispatches={
                 "plannedDispatches": [],
@@ -292,7 +294,7 @@ def test_unit_rates_fall_too_much_short(logs: LogCapture):
         (
             'root',
             'WARNING',
-            'Missing standard unit rates for 4.5 hours from 2024-03-06 05:30:00+00:00'
+            'Missing standard unit rates for 5.5 hours from 2024-03-06 05:30:00+00:00'
         ),
     )
 

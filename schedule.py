@@ -78,9 +78,10 @@ def make_seasons_and_energy_charges(
     if max_valid_to < schedule.end:
         missing = schedule.end - max_valid_to
         hours = missing.total_seconds() / (60*60)
-        logging.warning(
-            f'Missing standard unit rates for {hours:.1f} hours from {max_valid_to}'
-        )
+        if hours >= 5.1:
+            logging.warning(
+                f'Missing standard unit rates for {hours:.1f} hours from {max_valid_to}'
+            )
         fill_value = expensive if value == cheap else expensive
         for start, existing_value in schedule.entries.items():
             if existing_value is None and start >= max_valid_to:
