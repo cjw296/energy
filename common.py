@@ -7,7 +7,7 @@ from argparse import ArgumentParser
 from dataclasses import dataclass
 from datetime import timedelta, datetime
 from functools import wraps
-from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
+from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from time import sleep
 from typing import Callable, Iterator, ParamSpec, Self, Any, TypeVar
@@ -18,6 +18,12 @@ from pandas import Timestamp, date_range, to_datetime
 
 Action = Callable[[Config, Timestamp, Timestamp, Path], None]
 ActionMapping = dict[str, Action]
+
+# Average Gregorian year = 365.2425 days (400 year cycle: 97 leap years + 303 regular years)
+DAYS_PER_YEAR = 365.2425
+
+# Average month = 30.4369 days (DAYS_PER_YEAR / 12)
+DAYS_PER_MONTH = 30.4369
 
 
 def collect(*actions: Action) -> ActionMapping:

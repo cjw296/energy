@@ -5,12 +5,14 @@ description = "Energy manipulation tools"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "click>=8.1.8",
     "colorama>=0.4.6",
     "configurator[yaml]>=3.2.0",
     "gql[all]>=3.5.2",
     "mailinglogger>=6.0.0",
     "matplotlib>=3.10.1",
     "notebook>=7.3.2",
+    "odfpy>=1.4.1",
     "pandas>=2.2.3",
     "pendulum>=3.0.0",
     "requests>=2.32.3",
