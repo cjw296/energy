@@ -4,12 +4,8 @@ Energy Tools
 Environment Setup
 -----------------
 
-Build a virtualenv:
-
 ```
-python3.11 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+uv sync
 ```
 
 Then copy ``config.sample.yaml`` to ``config.yaml`` and fill in the config.
