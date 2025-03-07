@@ -50,6 +50,15 @@ def main(path: Path, sheet_name:str, verbose: bool):
     if verbose:
         pd.set_option("display.max_rows", None)  # Ensure all rows are printed
         print(data, '\n')
+
+    # Resample data to show average kWh per month by year
+    data["Year"] = data["Date"].dt.year
+    data["Month"] = data["Date"].dt.month
+    monthly_summary = data.groupby(["Year", "Month"])['kwh'].sum().unstack()
+    monthly_summary = monthly_summary.round(0).applymap(lambda x: f"{x:,.0f}")
+    print("\nAverage kWh per month by year:")
+    print(monthly_summary.to_string(), '\n')
+
     daily_average = data.mean()['kwh per day']
     annual = daily_average * DAYS_PER_YEAR
     monthly = daily_average * DAYS_PER_MONTH
