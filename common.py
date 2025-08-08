@@ -63,7 +63,7 @@ class TimestampArg:
                     possible.append(dt)
             possible.sort()
             return possible[index]
-        return Timestamp(text)
+        return to_datetime(text, format="%y-%m-%d")
 
     def add_argument(self, parser, name):
         parser.add_argument('--'+name, type=self, help='YY-mm-dd, max, min or now', required=True)
