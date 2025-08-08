@@ -19,7 +19,7 @@ On another machine that is synced to, run the following:
 
 .. code-block:: bash
 
-  python tesla-incoming.py
+  uv run tesla-incoming.py
 
 That will watch for arriving ``data.csv`` files, rename them and put them in the storage directory.
 
@@ -31,7 +31,7 @@ in the storage directory. You can specify a start and end date.
 
 .. code-block:: bash
 
-  python octopus-download.py
+  uv run octopus-download.py
 
 Reconciling Tesla data with Octopus data
 ----------------------------------------
@@ -42,7 +42,7 @@ threshold in kWh:
 
 .. code-block:: bash
 
-  python octopus-tesla-rec.py --threshold 0.2
+  uv run octopus-tesla-rec.py --threshold 0.2
 
 Octopus Bill Calculator for Go
 ------------------------------
@@ -52,4 +52,4 @@ example, you'd do:
 
 .. code-block:: bash
 
-  python octopus-bill.py 2019-10-01 2019-11-01
+  uv run octopus-bill.py 2019-10-01 2019-11-01
