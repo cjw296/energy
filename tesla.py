@@ -86,6 +86,8 @@ def download(config: Config, start: Timestamp, end: Timestamp, root: Path) -> No
                 end_date=tesla_formatted_dt(end_date),
                 period='day'
             )
+            if not data:
+                raise ValueError(f'No data for {end_date=}')
             path = root / date.strftime(PATTERN)
             path.write_text(json.dumps({'battery': battery, 'data': data}))
             logging.info(f'Downloaded {path}')
