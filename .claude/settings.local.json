@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:pandas.pydata.org)"
+    ],
+    "deny": []
+  }
+}
