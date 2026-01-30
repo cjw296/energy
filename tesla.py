@@ -10,10 +10,20 @@ from zoneinfo import ZoneInfo
 from configurator import Config
 from pandas import Timestamp, Timedelta, date_range
 from requests import HTTPError
-from teslapy import Tesla, Battery
+from teslapy import Tesla, Battery, Product, ProductError
 
 from common import main, collect, json_from_paths
 
+def patched_command(self, name, **kwargs):
+    response = self.api(name, **kwargs)['response']
+    # https://github.com/tdorssers/TeslaPy/issues/174
+    if isinstance(response, str):
+        response = json.loads(response)
+    if (response.get('code') or response.get('Code')) == 201:
+        return response.get('message')
+    raise ProductError(response.get('message'))
+
+Product.command = patched_command
 
 def with_tz(dt: Timestamp, tz: ZoneInfo) -> Timestamp:
     return Timestamp(year=dt.year, month=dt.month, day=dt.day, unit='m', tz=tz)
