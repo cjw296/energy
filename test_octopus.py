@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from pandas import Timestamp
-from pytz.exceptions import NonExistentTimeError
+# from pytz.exceptions import NonExistentTimeError
 from testfixtures import compare as compare_, ShouldRaise, ShouldAssert
 
 compare = partial(compare_, strict=True)
@@ -233,7 +233,12 @@ def test_single_entry_at_time_after_transition_dst_misses_hours():
 
 def add_multiple_entries_over_dst_misses_hours(schedule: Schedule):
     schedule.add(ts("00:00", '2024-03-31', TZ), ts("02:00", '2024-03-31', TZ), 10)
-    with ShouldRaise(NonExistentTimeError):
+    with ShouldRaise(
+            ValueError(
+            "2024-03-31 01:00:00 is a nonexistent time due to daylight savings time. "
+            "Try using the 'nonexistent' argument."
+            )
+    ):
         schedule.add(ts("01:00", '2024-03-31', TZ), ts("02:00", '2024-03-31', TZ), 20)
     schedule.add(ts("02:00", '2024-03-31', TZ), ts("03:00", '2024-03-31', TZ), 30)
     schedule.add(ts("03:00", '2024-03-31', TZ), ts("00:00", '2024-04-01', TZ), 40)
