@@ -20,3 +20,9 @@ dependencies = [
     "teslapy>=2.9.0",
     "watchdog>=6.0.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "testfixtures>=10.0.0",
+]
