@@ -19,9 +19,11 @@ def patched_command(self, name, **kwargs):
     # https://github.com/tdorssers/TeslaPy/issues/174
     if isinstance(response, str):
         response = json.loads(response)
-    if (response.get('code') or response.get('Code')) == 201:
-        return response.get('message')
-    raise ProductError(response.get('message'))
+    code = response.get('code') or response.get('Code')
+    message = response.get('message') or response.get('Message')
+    if code  == 201:
+        return message
+    raise ProductError(message or repr(response))
 
 Product.command = patched_command
 
