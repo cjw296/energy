@@ -6,7 +6,7 @@ from configurator import Config
 from teslapy import Tesla
 
 from common import add_log_level, configure_logging
-from tesla import battery_site_config
+from tesla import battery_site_config, ProductError
 
 
 def main():
@@ -46,8 +46,12 @@ def main():
         except ValueError:
             assert args.set_backup_reserve_percent.lower() == 'current', 'must be int or current'
             to_set = current
-        logging.info(f'setting to {to_set:.0f}%')
-        battery.set_backup_reserve_percent(to_set)
+        try:
+            message = battery.set_backup_reserve_percent(to_set)
+        except ProductError as e:
+            message = str(e)
+
+        logging.info(f'setting to {to_set:.0f}%: {message}')
 
 
 if __name__ == '__main__':
