@@ -12,16 +12,22 @@ from common import main, collect, json_from_paths
 
 # lifted from https://github.com/ashleypittman/mec/blob/master/get_zappi_history.py
 # in combination with https://github.com/twonk/MyEnergi-App-Api
-FIELD_NAMES = {'gep': 'Generation',
-               'gen': 'Generated Negative',
-               'h1d': 'Phase 1, Zappi diverted',
-               'h1b': 'Phase 1, Zappi imported',
-               'h2d': 'Phase 2, Zappi diverted',
-               'h2b': 'Phase 2, Zappi imported',
-               'h3d': 'Phase 3, Zappi diverted',
-               'h3b': 'Phase 3, Zappi imported',
-               'imp': 'Imported',
-               'exp': 'Exported'}
+FIELD_NAMES = {
+    'gep': 'Generation',
+    'gen': 'Generated Negative',
+    'h1d': 'Phase 1, Zappi diverted',
+    'h1b': 'Phase 1, Zappi imported',
+    'h2d': 'Phase 2, Zappi diverted',
+    'h2b': 'Phase 2, Zappi imported',
+    'h3d': 'Phase 3, Zappi diverted',
+    'h3b': 'Phase 3, Zappi imported',
+    'imp': 'Imported',
+    'exp': 'Exported',
+    'nect1': '???',
+    'pect1': '???',
+    'v1': 'Voltage',
+    'frq': 'Frequency',
+}
 
 
 PATTERN = 'zappi-%Y-%m-%d.json'
