@@ -26,3 +26,6 @@ dev = [
     "pytest>=9.0.2",
     "testfixtures>=10.0.0",
 ]
+
+[tool.uv.sources]
+teslapy = { git = "https://github.com/tdorssers/TeslaPy", rev = "master" }

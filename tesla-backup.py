@@ -3,10 +3,10 @@ import sys
 from argparse import ArgumentParser
 
 from configurator import Config
-from teslapy import Tesla
+from teslapy import Tesla, ProductError
 
 from common import add_log_level, configure_logging
-from tesla import battery_site_config, ProductError
+from tesla import battery_site_config
 
 
 def main():
