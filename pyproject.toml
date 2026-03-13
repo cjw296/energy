@@ -14,6 +14,7 @@ dependencies = [
     "notebook>=7.3.2",
     "odfpy>=1.4.1",
     "pandas>=2.2.3",
+    "pandas-stubs~=3.0.0",
     "pendulum>=3.0.0",
     "requests>=2.32.3",
     "tesla-api>=2.0.1",
