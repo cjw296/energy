@@ -17,7 +17,7 @@ dependencies = [
     "pendulum>=3.0.0",
     "requests>=2.32.3",
     "tesla-api>=2.0.1",
-    "teslapy>=2.9.0",
+    "teslapy>=2.9.1",
     "watchdog>=6.0.0",
 ]
 
@@ -26,6 +26,3 @@ dev = [
     "pytest>=9.0.2",
     "testfixtures>=10.0.0",
 ]
-
-[tool.uv.sources]
-teslapy = { git = "https://github.com/tdorssers/TeslaPy", rev = "master" }

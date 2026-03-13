@@ -433,7 +433,7 @@ requires-dist = [
     { name = "pendulum", specifier = ">=3.0.0" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "tesla-api", specifier = ">=2.0.1" },
-    { name = "teslapy", git = "https://github.com/tdorssers/TeslaPy?rev=master" },
+    { name = "teslapy", specifier = ">=2.9.1" },
     { name = "watchdog", specifier = ">=6.0.0" },
 ]
 
@@ -1675,12 +1675,16 @@ wheels = [
 
 [[package]]
 name = "teslapy"
-version = "2.9.0"
-source = { git = "https://github.com/tdorssers/TeslaPy?rev=master#8ce09575e582262ae3760bac66cb839e6322bba3" }
+version = "2.9.1"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
     { name = "requests-oauthlib" },
     { name = "websocket-client" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c2/97/6a2c90c93bc928b082c4b1807ea0d985f190a36db00f7014367e270d1f5d/teslapy-2.9.1.tar.gz", hash = "sha256:2037d2b8991bdb295851a4b111e43a7bd7e939873f7f35c77d77e92365e8b881", size = 67072, upload-time = "2026-03-08T12:47:28.468Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/46/28/c6fef6fd4511a423da9e59a59c3db412aaba81d6baf4c4b76e7519d9bd23/teslapy-2.9.1-py2.py3-none-any.whl", hash = "sha256:8049dc18c85df40cab83bf8b8c216fd7f5d965c7cd785b2277cc9c4fc9fdd241", size = 44697, upload-time = "2026-03-08T12:47:26.728Z" },
 ]
 
 [[package]]
