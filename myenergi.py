@@ -23,8 +23,8 @@ FIELD_NAMES = {
     'h3b': 'Phase 3, Zappi imported',
     'imp': 'Imported',
     'exp': 'Exported',
-    'nect1': '???',
-    'pect1': '???',
+    'nect1': 'External CT1 Negative Energy',
+    'pect1': 'External CT2 Positive Energy',
     'v1': 'Voltage',
     'frq': 'Frequency',
 }
