@@ -403,6 +403,7 @@ dependencies = [
     { name = "colorama" },
     { name = "configurator", extra = ["yaml"] },
     { name = "gql", extra = ["all"] },
+    { name = "httpx" },
     { name = "mailinglogger" },
     { name = "matplotlib" },
     { name = "notebook" },
@@ -428,6 +429,7 @@ requires-dist = [
     { name = "colorama", specifier = ">=0.4.6" },
     { name = "configurator", extras = ["yaml"], specifier = ">=3.2.0" },
     { name = "gql", extras = ["all"], specifier = ">=3.5.2" },
+    { name = "httpx", specifier = ">=0.28" },
     { name = "mailinglogger", specifier = ">=6.0.0" },
     { name = "matplotlib", specifier = ">=3.10.1" },
     { name = "notebook", specifier = ">=7.5.6" },
@@ -437,7 +439,7 @@ requires-dist = [
     { name = "pendulum", specifier = ">=3.0.0" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "tesla-api", specifier = ">=2.0.1" },
-    { name = "teslapy", specifier = ">=2.9.1" },
+    { name = "teslapy", git = "https://github.com/tdorssers/TeslaPy?rev=master" },
     { name = "watchdog", specifier = ">=6.0.0" },
 ]
 
@@ -561,6 +563,28 @@ wheels = [
 ]
 
 [[package]]
+name = "h2"
+version = "4.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "hpack" },
+    { name = "hyperframe" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1d/17/afa56379f94ad0fe8defd37d6eb3f89a25404ffc71d4d848893d270325fc/h2-4.3.0.tar.gz", hash = "sha256:6c59efe4323fa18b47a632221a1888bd7fde6249819beda254aeca909f221bf1", size = 2152026, upload-time = "2025-08-23T18:12:19.778Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/69/b2/119f6e6dcbd96f9069ce9a2665e0146588dc9f88f29549711853645e736a/h2-4.3.0-py3-none-any.whl", hash = "sha256:c438f029a25f7945c69e0ccf0fb951dc3f73a5f6412981daee861431b70e2bdd", size = 61779, upload-time = "2025-08-23T18:12:17.779Z" },
+]
+
+[[package]]
+name = "hpack"
+version = "4.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/26/5b/fcabf6028144a8723726318b07a32c2f3314acdff6265743cf08a344b18e/hpack-4.2.0.tar.gz", hash = "sha256:0895cfa3b5531fc65fe439c05eb65144f123bf7a394fcaa56aa423548d8e45c0", size = 51300, upload-time = "2026-06-23T18:34:46.667Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/71/b4/4a9fcfb2aef6ba44d9073ecd301443aa00b3dac95de5619f2a7de7ec8a91/hpack-4.2.0-py3-none-any.whl", hash = "sha256:858ac0b02280fa582b5080d68db0899c62a80375e0e5413a74970c5e518b6986", size = 34246, upload-time = "2026-06-23T18:34:45.472Z" },
+]
+
+[[package]]
 name = "httpcore"
 version = "1.0.9"
 source = { registry = "https://pypi.org/simple" }
@@ -586,6 +610,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b1/df/48c586a5fe32a0f01324ee087459e112ebb7224f646c0b5023f5e79e9956/httpx-0.28.1.tar.gz", hash = "sha256:75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc", size = 141406, upload-time = "2024-12-06T15:37:23.222Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl", hash = "sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad", size = 73517, upload-time = "2024-12-06T15:37:21.509Z" },
+]
+
+[package.optional-dependencies]
+http2 = [
+    { name = "h2" },
+]
+
+[[package]]
+name = "hyperframe"
+version = "6.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/02/e7/94f8232d4a74cc99514c13a9f995811485a6903d48e5d952771ef6322e30/hyperframe-6.1.0.tar.gz", hash = "sha256:f630908a00854a7adeabd6382b43923a4c4cd4b821fcb527e6ab9e15382a3b08", size = 26566, upload-time = "2025-01-22T21:41:49.302Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/48/30/47d0bf6072f7252e6521f3447ccfa40b421b6824517f82854703d0f5a98b/hyperframe-6.1.0-py3-none-any.whl", hash = "sha256:b03380493a519fce58ea5af42e4a42317bf9bd425596f7a0835ffce80f1a42e5", size = 13007, upload-time = "2025-01-22T21:41:47.295Z" },
 ]
 
 [[package]]
@@ -1268,7 +1306,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "ptyprocess" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [
@@ -1691,16 +1729,13 @@ wheels = [
 
 [[package]]
 name = "teslapy"
-version = "2.9.1"
-source = { registry = "https://pypi.org/simple" }
+version = "2.9.2"
+source = { git = "https://github.com/tdorssers/TeslaPy?rev=master#8380fb77152f48cb084671c436dc5816f68873f7" }
 dependencies = [
+    { name = "httpx", extra = ["http2"] },
     { name = "requests" },
     { name = "requests-oauthlib" },
     { name = "websocket-client" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c2/97/6a2c90c93bc928b082c4b1807ea0d985f190a36db00f7014367e270d1f5d/teslapy-2.9.1.tar.gz", hash = "sha256:2037d2b8991bdb295851a4b111e43a7bd7e939873f7f35c77d77e92365e8b881", size = 67072, upload-time = "2026-03-08T12:47:28.468Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/46/28/c6fef6fd4511a423da9e59a59c3db412aaba81d6baf4c4b76e7519d9bd23/teslapy-2.9.1-py2.py3-none-any.whl", hash = "sha256:8049dc18c85df40cab83bf8b8c216fd7f5d965c7cd785b2277cc9c4fc9fdd241", size = 44697, upload-time = "2026-03-08T12:47:26.728Z" },
 ]
 
 [[package]]
