@@ -127,15 +127,29 @@ def installation_time_zone(battery: Battery) -> ZoneInfo:
     return ZoneInfo(battery_site_config(battery)['installation_time_zone'])
 
 
-def parse_refresh_token(output: str) -> str:
+def parse_tesla_auth_section(output: str, header: str) -> str:
     lines = output.splitlines()
     for i, line in enumerate(lines):
-        if 'REFRESH TOKEN' in line:
+        if header in line:
             for candidate in lines[i + 1:]:
                 candidate = candidate.strip()
                 if candidate:
                     return candidate
-    raise ValueError('No REFRESH TOKEN section found in tesla_auth output')
+    raise ValueError(f'No {header} section found in tesla_auth output')
+
+
+VALID_FOR_MULTIPLIER = {'second': 1, 'minute': 60, 'hour': 3600}
+
+
+def parse_tesla_auth_output(output: str) -> dict:
+    amount, unit = parse_tesla_auth_section(output, 'VALID FOR').split()
+    expires_in = int(amount) * VALID_FOR_MULTIPLIER[unit.rstrip('s')]
+    return {
+        'access_token': parse_tesla_auth_section(output, 'ACCESS TOKEN'),
+        'refresh_token': parse_tesla_auth_section(output, 'REFRESH TOKEN'),
+        'expires_in': expires_in,
+        'token_type': 'Bearer',
+    }
 
 
 if __name__ == '__main__':

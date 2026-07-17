@@ -7,7 +7,7 @@ from configurator import Config
 from teslapy import Tesla
 
 from common import add_log_level, configure_logging
-from tesla import parse_refresh_token
+from tesla import parse_tesla_auth_output
 
 TESLA_AUTH_URL = 'https://github.com/adriankumpf/tesla_auth'
 TESLA_AUTH_PATH = Path('tesla_auth')
@@ -27,11 +27,16 @@ def main():
     result = subprocess.run(
         [TESLA_AUTH_PATH.resolve()], check=True, capture_output=True, text=True
     )
-    refresh_token = parse_refresh_token(result.stdout)
+    token = parse_tesla_auth_output(result.stdout)
 
     config = Config.from_path('config.yaml')
     tesla = Tesla(config.tesla.email)
-    tesla.refresh_token(refresh_token=refresh_token)
+    # An immediate refresh_token() call gets 403'd by the Owner API even over
+    # HTTP/2; tesla_auth's freshly issued access token works, so use it as-is
+    # and let teslapy refresh only once it's actually near expiry:
+    # https://github.com/tdorssers/TeslaPy/issues/175
+    tesla.token = token
+    tesla._token_updater()
     battery, = tesla.battery_list()
     logging.info(f'Login OK, found: {battery}')
 
