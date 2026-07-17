@@ -4,3 +4,4 @@ config.yaml
 cache.json
 *.log*
 /.venv
+/tesla_auth

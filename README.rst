@@ -15,15 +15,16 @@ Tesla login
 
 Tesla's SSO refresh token occasionally gets invalidated (Tesla-side revocation, not
 something this codebase controls), which shows up as ``LoginRequired`` from any of the
-Tesla scripts below, including ``octopus-tesla-sync.py`` in production. Tesla also changed
-their SSO redirect URI to ``tesla://auth/callback``, a custom app-URI scheme a normal
-browser can't navigate to, which broke teslapy's own browser-based login flow. So logging
-in goes via `tesla_auth <https://github.com/adriankumpf/tesla_auth>`_ instead, a small
-native app that handles that redirect (and MFA/captcha) for you:
+Tesla scripts below, including ``octopus-tesla-sync.py`` in production. Login goes via
+`tesla_auth <https://github.com/adriankumpf/tesla_auth>`_, a small native app that handles
+Tesla's login flow (MFA/captcha included) — teslapy's own browser-based login is currently
+broken, see `TeslaPy#175 <https://github.com/tdorssers/TeslaPy/issues/175>`_; drop the
+``tesla_auth`` dependency if that's ever resolved upstream.
 
-1. Install ``tesla_auth`` — download a prebuilt binary for your platform from its
-   `releases page <https://github.com/adriankumpf/tesla_auth/releases/latest>`_ and put it
-   on your ``PATH``. On Linux this also needs WebKitGTK and ``libxdo``; see its README.
+1. Download a prebuilt ``tesla_auth`` binary for your platform from its
+   `releases page <https://github.com/adriankumpf/tesla_auth/releases/latest>`_ and save it
+   as ``tesla_auth`` in this checkout's root (gitignored), made executable. On Linux this
+   also needs WebKitGTK and ``libxdo``; see its README.
 2. Run:
 
    .. code-block:: bash
