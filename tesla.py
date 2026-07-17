@@ -156,5 +156,19 @@ def parse_tesla_auth_output(output: str) -> dict:
     }
 
 
+def seed_tesla_token(email: str, token: dict, cache_file: str = 'cache.json') -> Tesla:
+    """A :class:`~teslapy.Tesla` client for `email`, freshly authenticated with `token`.
+
+    Construction must not depend on whatever's already in `cache_file` — a stale or
+    malformed entry there (e.g. one written before `expires_at` was seeded, see
+    `parse_tesla_auth_output`) would crash `Tesla.__init__` reading it, before the
+    fresh token from tesla_auth is ever assigned.
+    """
+    tesla = Tesla(email, cache_file=cache_file, cache_loader=lambda: {})
+    tesla.token = token
+    tesla._token_updater()
+    return tesla
+
+
 if __name__ == '__main__':
     main(collect(download, check, json_to_csv), PATTERN)
