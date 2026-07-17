@@ -22,9 +22,33 @@ in interactively, wherever you can open a browser:
 
   uv run tesla-login.py
 
-This opens Tesla's SSO login page; log in, then paste the redirected URL (a "Page Not
-Found" page) back into the prompt. That refreshes ``cache.json`` in the current directory,
-which needs to be in place before the production process (re)starts.
+This opens Tesla's SSO login page and prints:
+
+.. code-block:: text
+
+  Enter URL after authentication:
+
+**Do not paste the URL that was just printed/opened** — that's the login page URL, before
+you've logged in, and has no ``code=`` parameter. Pasting it back gives
+``oauthlib.oauth2.rfc6749.errors.MissingCodeError: (missing_code) Missing code parameter
+in response``.
+
+Instead, log in with your Tesla credentials (and MFA if enabled). Tesla's redirect URI is
+now ``tesla://auth/callback``, a custom app-URI scheme a normal browser can't navigate to,
+so you will *not* see the old "Page Not Found" success page. What you'll see instead is a
+page that just says "Verified Successfully / Loading..." and hangs there — the browser has
+tried and failed to navigate to ``tesla://auth/callback?code=...&state=...``, but the
+address bar doesn't update to show it. To get that URL:
+
+- open browser dev tools (F12) → Network tab **before** logging in (so it's already
+  recording), log in, then find the failed/canceled request to ``tesla://auth/callback``
+  in the list and copy its full URL, or
+- copy it from an "Open in app?" dialog, if your browser shows one instead.
+
+Paste that URL — not the original authorize URL, and not the "Verified Successfully" page's
+URL — into the prompt. That refreshes
+``cache.json`` in the current directory, which needs to be in place before the production
+process (re)starts.
 
 Tesla data renamer
 ------------------
