@@ -25,7 +25,14 @@ broken, see `TeslaPy#175 <https://github.com/tdorssers/TeslaPy/issues/175>`_; dr
    `releases page <https://github.com/adriankumpf/tesla_auth/releases/latest>`_ and save it
    as ``tesla_auth`` in this checkout's root (gitignored), made executable. On Linux this
    also needs WebKitGTK and ``libxdo``; see its README.
-2. Run:
+2. On macOS, clear the quarantine flag Gatekeeper puts on downloaded binaries, or you'll
+   get a "tesla_auth Not Opened" dialog:
+
+   .. code-block:: bash
+
+     xattr -d com.apple.quarantine tesla_auth
+
+3. Run:
 
    .. code-block:: bash
 

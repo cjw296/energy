@@ -22,7 +22,8 @@ def main():
         raise SystemExit(f'{TESLA_AUTH_PATH} not found, download it from {TESLA_AUTH_URL}')
 
     logging.info('Launching tesla_auth; log in, then copy the refresh token from its window.')
-    subprocess.run([TESLA_AUTH_PATH], check=True)
+    # a bare filename is looked up on PATH by execvp, not resolved against cwd
+    subprocess.run([TESLA_AUTH_PATH.resolve()], check=True)
     refresh_token = input('Enter SSO refresh token: ').strip()
 
     config = Config.from_path('config.yaml')
