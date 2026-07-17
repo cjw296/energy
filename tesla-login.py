@@ -1,10 +1,14 @@
 import logging
+import shutil
+import subprocess
 from argparse import ArgumentParser
 
 from configurator import Config
 from teslapy import Tesla
 
 from common import add_log_level, configure_logging
+
+TESLA_AUTH_URL = 'https://github.com/adriankumpf/tesla_auth'
 
 
 def main():
@@ -13,14 +17,17 @@ def main():
     args = parser.parse_args()
     configure_logging(args.log_level)
 
+    tesla_auth = shutil.which('tesla_auth')
+    if tesla_auth is None:
+        raise SystemExit(f'tesla_auth not found on PATH, download it from {TESLA_AUTH_URL}')
+
+    logging.info('Launching tesla_auth; log in, then copy the refresh token from its window.')
+    subprocess.run([tesla_auth], check=True)
+    refresh_token = input('Enter SSO refresh token: ').strip()
+
     config = Config.from_path('config.yaml')
     tesla = Tesla(config.tesla.email)
-    # `authorized` is just `bool(access_token)`, true even for a stale cached
-    # token, so it won't trigger the interactive flow on its own:
-    # https://github.com/tdorssers/TeslaPy/issues/178
-    tesla.token = {}
-    del tesla.access_token
-    tesla.fetch_token()
+    tesla.refresh_token(refresh_token=refresh_token)
     battery, = tesla.battery_list()
     logging.info(f'Login OK, found: {battery}')
 

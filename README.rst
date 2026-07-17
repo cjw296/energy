@@ -15,40 +15,27 @@ Tesla login
 
 Tesla's SSO refresh token occasionally gets invalidated (Tesla-side revocation, not
 something this codebase controls), which shows up as ``LoginRequired`` from any of the
-Tesla scripts below, including ``octopus-tesla-sync.py`` in production. Fix it by logging
-in interactively, wherever you can open a browser:
+Tesla scripts below, including ``octopus-tesla-sync.py`` in production. Tesla also changed
+their SSO redirect URI to ``tesla://auth/callback``, a custom app-URI scheme a normal
+browser can't navigate to, which broke teslapy's own browser-based login flow. So logging
+in goes via `tesla_auth <https://github.com/adriankumpf/tesla_auth>`_ instead, a small
+native app that handles that redirect (and MFA/captcha) for you:
 
-.. code-block:: bash
+1. Install ``tesla_auth`` — download a prebuilt binary for your platform from its
+   `releases page <https://github.com/adriankumpf/tesla_auth/releases/latest>`_ and put it
+   on your ``PATH``. On Linux this also needs WebKitGTK and ``libxdo``; see its README.
+2. Run:
 
-  uv run tesla-login.py
+   .. code-block:: bash
 
-This opens Tesla's SSO login page and prints:
+     uv run tesla-login.py
 
-.. code-block:: text
+   This launches ``tesla_auth``. Log in with your Tesla credentials (and MFA if enabled);
+   its final window shows the refresh token — copy it and paste it in when prompted.
 
-  Enter URL after authentication:
-
-**Do not paste the URL that was just printed/opened** — that's the login page URL, before
-you've logged in, and has no ``code=`` parameter. Pasting it back gives
-``oauthlib.oauth2.rfc6749.errors.MissingCodeError: (missing_code) Missing code parameter
-in response``.
-
-Instead, log in with your Tesla credentials (and MFA if enabled). Tesla's redirect URI is
-now ``tesla://auth/callback``, a custom app-URI scheme a normal browser can't navigate to,
-so you will *not* see the old "Page Not Found" success page. What you'll see instead is a
-page that just says "Verified Successfully / Loading..." and hangs there — the browser has
-tried and failed to navigate to ``tesla://auth/callback?code=...&state=...``, but the
-address bar doesn't update to show it. To get that URL:
-
-- open browser dev tools (F12) → Network tab **before** logging in (so it's already
-  recording), log in, then find the failed/canceled request to ``tesla://auth/callback``
-  in the list and copy its full URL, or
-- copy it from an "Open in app?" dialog, if your browser shows one instead.
-
-Paste that URL — not the original authorize URL, and not the "Verified Successfully" page's
-URL — into the prompt. That refreshes
-``cache.json`` in the current directory, which needs to be in place before the production
-process (re)starts.
+That refreshes ``cache.json`` in the current directory, which needs to be in place before
+the production process (re)starts. This needs wherever you run it to have a display, so it
+can't be done directly on a headless production host.
 
 Tesla data renamer
 ------------------
