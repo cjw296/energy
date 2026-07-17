@@ -1,6 +1,6 @@
 from functools import partial
 
-from testfixtures import compare as compare_, ShouldRaise
+from testfixtures import Replace, compare as compare_, ShouldRaise, mock_time
 
 compare = partial(compare_, strict=True)
 
@@ -31,12 +31,15 @@ def test_parse_tesla_auth_section_missing():
 
 
 def test_parse_tesla_auth_output():
-    compare(parse_tesla_auth_output(OUTPUT), expected={
-        'access_token': 'fake-access-token',
-        'refresh_token': 'fake-refresh-token',
-        'expires_in': 28800,
-        'token_type': 'Bearer',
-    })
+    t = mock_time(2026, 7, 17, delta=0)
+    with Replace('tesla.time', t):
+        compare(parse_tesla_auth_output(OUTPUT), expected={
+            'access_token': 'fake-access-token',
+            'refresh_token': 'fake-refresh-token',
+            'expires_in': 28800,
+            'expires_at': t() + 28800,
+            'token_type': 'Bearer',
+        })
 
 
 def test_parse_tesla_auth_output_minutes():

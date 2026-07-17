@@ -3,7 +3,7 @@ import json
 import logging
 from datetime import timedelta
 from pathlib import Path
-from time import sleep
+from time import sleep, time
 from typing import Iterator
 from zoneinfo import ZoneInfo
 
@@ -148,6 +148,10 @@ def parse_tesla_auth_output(output: str) -> dict:
         'access_token': parse_tesla_auth_section(output, 'ACCESS TOKEN'),
         'refresh_token': parse_tesla_auth_section(output, 'REFRESH TOKEN'),
         'expires_in': expires_in,
+        # teslapy's own cache round-trip reads expires_at, not expires_in: normally
+        # set by oauthlib when a token is fetched through the OAuth flow, but we're
+        # handing tesla_auth's token to teslapy directly, bypassing that.
+        'expires_at': time() + expires_in,
         'token_type': 'Bearer',
     }
 
