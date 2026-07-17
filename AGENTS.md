@@ -5,6 +5,10 @@
 - **Done means green**: a change is only complete when `./happy.sh` exits 0; do not commit until it does.
 - **No unrelated failures**: if `./happy.sh` fails on something unrelated to your changes, do NOT assume it is a pre-existing problem and proceed anyway. Stop immediately and ask the user how to proceed.
 - **Use `compare()` in tests**: never use bare `assert` statements; always use `compare(actual, expected=...)` from `testfixtures` for assertions.
+- **All new code must be tested**: no untested functionality, ever.
+- **Reproduce before fixing**: when fixing a bug, add a failing test and watch it fail before changing any code.
+- **Succinct, high-signal prose**: in docs, comments, and messages to the user, say only what adds information; cut filler.
+- **Commit messages explain why, succinctly**: the diff already shows what changed; the message states the reason, briefly.
 
 ## Project Overview
 
