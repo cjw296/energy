@@ -385,6 +385,42 @@ CHANGING_RATES_SCHEDULE = expected_schedule(
 )
 
 
+OPEN_ENDED_UNIT_RATES_RESPONSE = [
+    {
+        "value": 7.49994,
+        "validTo": "2024-02-29T05:30:00+00:00",
+        "validFrom": "2024-02-28T23:30:00+00:00"
+    },
+    {
+        "value": 30.59805,
+        "validTo": "2024-02-29T23:30:00+00:00",
+        "validFrom": "2024-02-29T05:30:00+00:00"
+    },
+    {
+        "value": 7.49994,
+        "validTo": "2024-03-01T05:30:00+00:00",
+        "validFrom": "2024-02-29T23:30:00+00:00"
+    },
+    {
+        "value": 30.59805,
+        "validTo": None,
+        "validFrom": "2024-03-01T05:30:00+00:00"
+    },
+]
+
+
+def test_last_unit_rate_open_ended():
+    # Octopus can return validTo: null for a rate that's currently in effect
+    # with no known end yet; treat it as extending to the end of our window.
+    actual = make_seasons_and_energy_charges(
+        now=Timestamp('2024-02-29T16:42:12', tz=London),
+        unit_rates_schedule=OPEN_ENDED_UNIT_RATES_RESPONSE,
+        dispatches={},
+        timezone=London
+    )
+    compare(json.loads(json.dumps(actual)), expected=BASIC_SCHEDULE)
+
+
 def test_unit_rates_changing():
     actual = make_seasons_and_energy_charges(
         now=Timestamp('2024-06-30T11:05:26', tz=London),
