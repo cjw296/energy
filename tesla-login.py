@@ -7,6 +7,7 @@ from configurator import Config
 from teslapy import Tesla
 
 from common import add_log_level, configure_logging
+from tesla import parse_refresh_token
 
 TESLA_AUTH_URL = 'https://github.com/adriankumpf/tesla_auth'
 TESLA_AUTH_PATH = Path('tesla_auth')
@@ -21,10 +22,12 @@ def main():
     if not TESLA_AUTH_PATH.exists():
         raise SystemExit(f'{TESLA_AUTH_PATH} not found, download it from {TESLA_AUTH_URL}')
 
-    logging.info('Launching tesla_auth; log in, then copy the refresh token from its window.')
+    logging.info('Launching tesla_auth, log in when the window appears.')
     # a bare filename is looked up on PATH by execvp, not resolved against cwd
-    subprocess.run([TESLA_AUTH_PATH.resolve()], check=True)
-    refresh_token = input('Enter SSO refresh token: ').strip()
+    result = subprocess.run(
+        [TESLA_AUTH_PATH.resolve()], check=True, capture_output=True, text=True
+    )
+    refresh_token = parse_refresh_token(result.stdout)
 
     config = Config.from_path('config.yaml')
     tesla = Tesla(config.tesla.email)

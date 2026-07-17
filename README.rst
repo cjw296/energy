@@ -39,7 +39,8 @@ broken, see `TeslaPy#175 <https://github.com/tdorssers/TeslaPy/issues/175>`_; dr
      uv run tesla-login.py
 
    This launches ``tesla_auth``. Log in with your Tesla credentials (and MFA if enabled);
-   its final window shows the refresh token — copy it and paste it in when prompted.
+   ``tesla-login.py`` reads the refresh token straight from its output, no copy/paste
+   needed.
 
 That refreshes ``cache.json`` in the current directory, which needs to be in place before
 the production process (re)starts. This needs wherever you run it to have a display, so it

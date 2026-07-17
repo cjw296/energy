@@ -127,5 +127,16 @@ def installation_time_zone(battery: Battery) -> ZoneInfo:
     return ZoneInfo(battery_site_config(battery)['installation_time_zone'])
 
 
+def parse_refresh_token(output: str) -> str:
+    lines = output.splitlines()
+    for i, line in enumerate(lines):
+        if 'REFRESH TOKEN' in line:
+            for candidate in lines[i + 1:]:
+                candidate = candidate.strip()
+                if candidate:
+                    return candidate
+    raise ValueError('No REFRESH TOKEN section found in tesla_auth output')
+
+
 if __name__ == '__main__':
     main(collect(download, check, json_to_csv), PATTERN)
