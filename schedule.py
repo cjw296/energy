@@ -43,8 +43,6 @@ def make_seasons_and_energy_charges(
     max_valid_to = None
     value = None
     for rate in sorted(unit_rates_schedule, key=unit_rates_sort_key):
-        # Octopus returns validTo: null for a rate that's in effect with no known
-        # end yet; treat it as extending to the end of the window we care about.
         valid_to = schedule.end if rate['validTo'] is None else Timestamp(rate['validTo'])
         max_valid_to = valid_to if max_valid_to is None else max(max_valid_to, valid_to)
         value = rate['value']

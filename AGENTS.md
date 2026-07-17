@@ -9,6 +9,7 @@
 - **Reproduce before fixing**: when fixing a bug, add a failing test and watch it fail before changing any code.
 - **Succinct, high-signal prose**: in docs, comments, and messages to the user, say only what adds information; cut filler.
 - **Commit messages explain why, succinctly**: the diff already shows what changed; the message states the reason, briefly.
+- **The why goes in the commit message, not a comment**: don't add a code comment restating the reasoning already captured in the commit message; if the reasoning genuinely needs to live in the code (surprising invariant a reader would hit without it), that's the exception, not the default.
 
 ## Project Overview
 
