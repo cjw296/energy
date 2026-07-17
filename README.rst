@@ -10,6 +10,22 @@ uv sync
 
 Then copy ``config.sample.yaml`` to ``config.yaml`` and fill in the config.
 
+Tesla login
+-----------
+
+Tesla's SSO refresh token occasionally gets invalidated (Tesla-side revocation, not
+something this codebase controls), which shows up as ``LoginRequired`` from any of the
+Tesla scripts below, including ``octopus-tesla-sync.py`` in production. Fix it by logging
+in interactively, wherever you can open a browser:
+
+.. code-block:: bash
+
+  uv run tesla-login.py
+
+This opens Tesla's SSO login page; log in, then paste the redirected URL (a "Page Not
+Found" page) back into the prompt. That refreshes ``cache.json`` in the current directory,
+which needs to be in place before the production process (re)starts.
+
 Tesla data renamer
 ------------------
 
