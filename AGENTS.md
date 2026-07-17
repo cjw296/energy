@@ -10,6 +10,7 @@
 - **Succinct, high-signal prose**: in docs, comments, and messages to the user, say only what adds information; cut filler.
 - **Commit messages explain why, succinctly**: the diff already shows what changed; the message states the reason, briefly.
 - **The why goes in the commit message, not a comment**: don't add a code comment restating the reasoning already captured in the commit message; if the reasoning genuinely needs to live in the code (surprising invariant a reader would hit without it), that's the exception, not the default.
+- **Ignore Pyright diagnostics**: this project doesn't use Pyright; any diagnostics shown are just the editor's LSP and are not a signal about this codebase.
 
 ## Project Overview
 
