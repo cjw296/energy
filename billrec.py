@@ -21,6 +21,14 @@ class Charge:
     kwh: Decimal
     cost_inc_vat: Decimal
     standing_ex_vat: Decimal
+    usage_ex_vat: Decimal = Decimal(0)
+
+
+def _pounds_ex_vat(pence_inc_vat: int, net: int, gross: int) -> Decimal:
+    value = Decimal(pence_inc_vat)
+    if gross:
+        value = value * net / gross
+    return value / 100
 
 
 def charges_from_transactions(transactions: list[dict[str, Any]]) -> list[Charge]:
@@ -31,16 +39,14 @@ def charges_from_transactions(transactions: list[dict[str, Any]]) -> list[Charge
                 or transaction.get('isExport') or not consumption
                 or consumption['unit'] != 'kWh'):
             continue
-        amounts = transaction['amounts']
-        standing = Decimal(consumption['supplyCharge'])
-        if amounts['gross']:
-            standing = standing * amounts['net'] / amounts['gross']
+        net, gross = transaction['amounts']['net'], transaction['amounts']['gross']
         charges.append(Charge(
             start=date.fromisoformat(consumption['startDate']),
             end=date.fromisoformat(consumption['endDate']),
             kwh=Decimal(consumption['quantity']),
-            cost_inc_vat=Decimal(amounts['gross']) / 100,
-            standing_ex_vat=standing / 100,
+            cost_inc_vat=Decimal(gross) / 100,
+            standing_ex_vat=_pounds_ex_vat(consumption['supplyCharge'], net, gross),
+            usage_ex_vat=_pounds_ex_vat(consumption['usageCost'], net, gross),
         ))
     return sorted(charges, key=lambda charge: charge.end)
 

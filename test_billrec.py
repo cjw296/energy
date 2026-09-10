@@ -29,7 +29,7 @@ def transaction(**overrides):
         'isReversed': False, 'isExport': False,
         'amounts': {'net': 100, 'tax': 5, 'gross': 105},
         'consumption': {'startDate': '2026-07-15', 'endDate': '2026-08-31', 'quantity': '123.4560',
-                        'unit': 'kWh', 'usageCost': 0, 'supplyCharge': 105},
+                        'unit': 'kWh', 'usageCost': 210, 'supplyCharge': 105},
     }
     node.update(overrides)
     return node
@@ -47,7 +47,8 @@ def test_charges_from_transactions():
          'isReversed': False, 'amounts': {'net': -4321, 'tax': 0, 'gross': -4321}},
     ]
     compare(charges_from_transactions(transactions), expected=[
-        Charge(date(2026, 7, 15), date(2026, 8, 31), Decimal('123.4560'), Decimal('1.05'), Decimal('1')),
+        Charge(date(2026, 7, 15), date(2026, 8, 31), Decimal('123.4560'), Decimal('1.05'), Decimal('1'),
+               Decimal('2')),
     ])
 
 
@@ -60,7 +61,8 @@ def test_charges_sorted_by_end_and_zero_gross():
     ]
     compare(charges_from_transactions(transactions), expected=[
         Charge(date(2026, 7, 1), date(2026, 7, 14), Decimal('0'), Decimal('0'), Decimal('0')),
-        Charge(date(2026, 7, 15), date(2026, 8, 31), Decimal('123.4560'), Decimal('1.05'), Decimal('1')),
+        Charge(date(2026, 7, 15), date(2026, 8, 31), Decimal('123.4560'), Decimal('1.05'), Decimal('1'),
+               Decimal('2')),
     ])
 
 

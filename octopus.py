@@ -57,6 +57,26 @@ class OctopusRESTClient:
         assert len(points) == 1, f'more than one point found: {points}'
         return points[0]
 
+    def consumption(
+            self, mpan: str, serials: list[str], start: Timestamp, end: Timestamp
+    ) -> dict[Timestamp, float]:
+        """Half-hourly import in kWh keyed by UTC interval start, summed across meters."""
+        totals: dict[Timestamp, float] = {}
+        for serial in serials:
+            data = self.get(
+                f'/electricity-meter-points/{mpan}/meters/{serial}/consumption/',
+                period_from=start.isoformat(), period_to=end.isoformat(),
+                order_by='period', page_size=25000,
+            )
+            while True:
+                for reading in data['results']:
+                    interval = Timestamp(reading['interval_start']).tz_convert('UTC')
+                    totals[interval] = totals.get(interval, 0.0) + reading['consumption']
+                if not data['next']:
+                    break
+                data = self.get(data['next'])
+        return totals
+
     def gsp(self, mpan: str) -> str:
         return self.get(f'/electricity-meter-points/{mpan}/')['gsp']
 
@@ -200,6 +220,7 @@ class OctopusGraphQLClient:
                               displayName
                               unitRates {
                                 value
+                                preVatValue
                                 validTo
                                 validFrom
                                 rateType
@@ -218,7 +239,11 @@ class OctopusGraphQLClient:
             params={'accountNumber': account}
         )
         agreement, = data['account']['electricityAgreements']
-        return {**agreement['tariff'], 'timeOfUseScheme': agreement['timeOfUseScheme']}
+        return {
+            **agreement['tariff'],
+            'timeOfUseScheme': agreement['timeOfUseScheme'],
+            'agreementValidFrom': agreement['validFrom'],
+        }
 
 
 @dataclass

@@ -25,6 +25,7 @@ def test_tariff_includes_time_of_use_scheme():
     }]}})
     compare(client.tariff('A-123'), expected={
         'tariffCode': 'E-1R-IOG-SMB-VAR-24-10-29-C', 'unitRates': [], 'timeOfUseScheme': scheme,
+        'agreementValidFrom': '2026-07-14T23:00:00+00:00',
     })
 
 

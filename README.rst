@@ -69,6 +69,23 @@ in the storage directory. You can specify a start and end date.
 
   uv run octopus-download.py
 
+Checking the utilities spreadsheet against Octopus bills
+--------------------------------------------------------
+
+Run this after adding bills to the Electricity sheet of ``utilities.ods``:
+
+.. code-block:: bash
+
+  uv run octopus-bill-rec.py path/to/utilities.ods
+
+It compares each bill row's kWh, cost inc VAT and standing charge with Octopus's billed
+charges (``--mismatches-only`` hides rows that agree). It then checks bills on the current
+time-of-use agreement against the tariff model ``octopus-tesla-sync.py`` uses: night window
+and completed dispatch half hours at the night rate, everything else at the day rate. A
+``MISMATCH`` means Octopus is billing differently, for example by enforcing the Intelligent
+Octopus Go 6-hour smart-charge cap. ``octopus-tesla-sync.py`` runs the same check daily and
+emails an error on a mismatch.
+
 Reconciling Tesla data with Octopus data
 ----------------------------------------
 

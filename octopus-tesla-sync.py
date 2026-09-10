@@ -1,9 +1,11 @@
 import logging
 from argparse import ArgumentParser
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum, auto
+from functools import partial
 from pprint import pformat
 from zoneinfo import ZoneInfo
 
@@ -12,8 +14,9 @@ from gql.transport.aiohttp import log as gql_logger
 from pandas import Timestamp
 from teslapy import Tesla, Battery
 
+from billcheck import DailyModelCheck, model_checks
 from common import DiffDumper, add_log_level, configure_logging, Run, diff, root_from
-from octopus import OctopusGraphQLClient
+from octopus import OctopusGraphQLClient, OctopusRESTClient
 from tesla import installation_time_zone
 from schedule import make_seasons_and_energy_charges
 
@@ -47,6 +50,7 @@ class Syncer:
     sync: Sync
     force: bool
     tesla_tariff: dict | None = None
+    model_check: Callable[[date], None] | None = None
 
     def __call__(self):
         now = Timestamp(datetime.now().astimezone())
@@ -66,6 +70,12 @@ class Syncer:
                 {'dispatches': dispatches, 'unit_rates': unit_rates_schedule, 'agreement': tariff},
                 force=self.force
             )
+
+        if self.model_check is not None:
+            try:
+                self.model_check(now.date())
+            except Exception:
+                logging.exception('Tariff model check failed')
 
         # get the current tesla tariff config:
         if not self.tesla_tariff:
@@ -140,6 +150,9 @@ def main():
         installation_time_zone(battery),
         args.sync,
         args.force,
+        model_check=DailyModelCheck(
+            partial(model_checks, graphql_client, OctopusRESTClient(api_key), account, storage)
+        ),
     )
 
     run = Run(syncer)
