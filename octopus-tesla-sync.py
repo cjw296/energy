@@ -83,7 +83,9 @@ class Syncer:
         required_tariff['name'] = tariff['fullName']
         required_tariff['demand_charges'] = make_demand_charges()
         required_tariff.update(
-            make_seasons_and_energy_charges(now, unit_rates_schedule, dispatches, self.timezone)
+            make_seasons_and_energy_charges(
+                now, unit_rates_schedule, dispatches, self.timezone, tariff.get('timeOfUseScheme')
+            )
         )
 
         changed = self.tesla_tariff != required_tariff

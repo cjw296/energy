@@ -421,6 +421,121 @@ def test_last_unit_rate_open_ended():
     compare(json.loads(json.dumps(actual)), expected=BASIC_SCHEDULE)
 
 
+FOUR_RATE_UNIT_RATES = [
+    {"value": 30.371355, "validTo": None, "validFrom": "2026-07-05T23:00:00+00:00", "rateType": "EV_DEVICE_PEAK"},
+    {"value": 6.89997, "validTo": None, "validFrom": "2026-07-05T23:00:00+00:00", "rateType": "EV_DEVICE_OFF_PEAK"},
+    {"value": 6.89997, "validTo": None, "validFrom": "2026-07-05T23:00:00+00:00", "rateType": "ECO7_NIGHT"},
+    {"value": 30.371355, "validTo": None, "validFrom": "2026-07-05T23:00:00+00:00", "rateType": "ECO7_DAY"},
+]
+
+IOG_ECO7_TOU = {
+    "name": "IOG_ECO7_TOU",
+    "timezone": "Europe/London",
+    "timeslots": [
+        {"timeslot": "ECO7_DAY", "activeFrom": "05:30:00", "activeTo": "23:30:00"},
+        {"timeslot": "ECO7_NIGHT", "activeFrom": "23:30:00", "activeTo": "05:30:00"},
+    ],
+}
+
+FOUR_RATE_SCHEDULE = expected_schedule(
+    BASIC_SCHEDULE['seasons']['Summer']['tou_periods'],
+    rates={"ON_PEAK": 0.3, "SUPER_OFF_PEAK": 0.07},
+)
+
+
+def four_rate(unit_rates=FOUR_RATE_UNIT_RATES, time_of_use_scheme=IOG_ECO7_TOU, dispatches=None,
+              now='2026-09-10T12:34:56'):
+    return make_seasons_and_energy_charges(
+        now=Timestamp(now, tz=London),
+        unit_rates_schedule=unit_rates,
+        dispatches=dispatches or {},
+        timezone=London,
+        time_of_use_scheme=time_of_use_scheme,
+    )
+
+
+def test_four_rate_tariff_uses_time_of_use_scheme():
+    compare(json.loads(json.dumps(four_rate())), expected=FOUR_RATE_SCHEDULE)
+
+
+def test_four_rate_tariff_across_midnight():
+    compare(json.loads(json.dumps(four_rate(now='2026-09-10T23:40:00'))), expected=FOUR_RATE_SCHEDULE)
+
+
+def test_four_rate_tariff_smart_charge_dispatch_is_cheap():
+    actual = four_rate(dispatches={
+        "plannedDispatches": [
+            {
+                "startDtUtc": "2026-09-10 12:00:00+00:00",
+                "endDtUtc": "2026-09-10 15:00:00+00:00",
+                "chargeKwh": "-20.70",
+                "meta": {"source": "smart-charge", "location": None},
+            }
+        ],
+        "completedDispatches": [],
+    })
+    compare(json.loads(json.dumps(actual)), expected=expected_schedule({
+        "ON_PEAK": [
+            {"fromDayOfWeek": 0, "toDayOfWeek": 6, "fromHour": 5, "fromMinute": 30, "toHour": 13, "toMinute": 0},
+            {"fromDayOfWeek": 0, "toDayOfWeek": 6, "fromHour": 16, "fromMinute": 0, "toHour": 23, "toMinute": 30},
+        ],
+        "SUPER_OFF_PEAK": [
+            {"fromDayOfWeek": 0, "toDayOfWeek": 6, "fromHour": 0, "fromMinute": 0, "toHour": 5, "toMinute": 30},
+            {"fromDayOfWeek": 0, "toDayOfWeek": 6, "fromHour": 13, "fromMinute": 0, "toHour": 16, "toMinute": 0},
+            {"fromDayOfWeek": 0, "toDayOfWeek": 6, "fromHour": 23, "fromMinute": 30, "toHour": 0, "toMinute": 0},
+        ],
+    }, rates={"ON_PEAK": 0.3, "SUPER_OFF_PEAK": 0.07}))
+
+
+def test_four_rate_tariff_without_time_of_use_scheme():
+    with ShouldRaise(ValueError('Unit rates have rate types but no time of use scheme')):
+        four_rate(time_of_use_scheme=None)
+
+
+def test_four_rate_tariff_unexpected_rate_types():
+    unit_rates = FOUR_RATE_UNIT_RATES + [
+        {"value": 15.0, "validTo": None, "validFrom": "2026-07-05T23:00:00+00:00", "rateType": "PEAK"},
+    ]
+    with ShouldRaise(ValueError(
+        "Unexpected rate types: ['ECO7_DAY', 'ECO7_NIGHT', 'EV_DEVICE_OFF_PEAK', 'EV_DEVICE_PEAK', 'PEAK']"
+    )):
+        four_rate(unit_rates=unit_rates)
+
+
+def test_four_rate_tariff_ev_rates_differ():
+    unit_rates = [dict(rate) for rate in FOUR_RATE_UNIT_RATES]
+    unit_rates[0]['value'] = 34.0
+    with ShouldRaise(ValueError(
+        "EV rates differ from day/night rates: {'ECO7_DAY': 30.371355, 'ECO7_NIGHT': 6.89997, "
+        "'EV_DEVICE_OFF_PEAK': 6.89997, 'EV_DEVICE_PEAK': 34.0}"
+    )):
+        four_rate(unit_rates=unit_rates)
+
+
+def test_four_rate_tariff_unexpected_time_of_use_scheme():
+    scheme = {"name": "OTHER", "timezone": "Europe/London", "timeslots": [
+        {"timeslot": "ECO7_DAY", "activeFrom": "07:30:00", "activeTo": "00:30:00"},
+    ]}
+    with ShouldRaise(ValueError(f'Unexpected time of use scheme: {scheme}')):
+        four_rate(time_of_use_scheme=scheme)
+
+
+def test_two_rates_but_flat_schedule():
+    unit_rates = [
+        {"value": 30.59805, "validTo": None, "validFrom": "2024-02-28T23:30:00+00:00"},
+        {"value": 7.49994, "validTo": None, "validFrom": "2024-02-28T23:30:00+00:00"},
+    ]
+    with ShouldRaise(ValueError(
+        "Schedule uses only ['SUPER_OFF_PEAK'] of ['ON_PEAK', 'SUPER_OFF_PEAK']"
+    )):
+        make_seasons_and_energy_charges(
+            now=Timestamp('2024-02-29T16:42:12', tz=London),
+            unit_rates_schedule=unit_rates,
+            dispatches={},
+            timezone=London,
+        )
+
+
 def test_unit_rates_changing():
     actual = make_seasons_and_energy_charges(
         now=Timestamp('2024-06-30T11:05:26', tz=London),

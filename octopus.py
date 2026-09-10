@@ -202,9 +202,15 @@ class OctopusGraphQLClient:
                                 value
                                 validTo
                                 validFrom
+                                rateType
                               }
                             }
                         }
+                         timeOfUseScheme {
+                           name
+                           timezone
+                           timeslots { timeslot activeFrom activeTo }
+                         }
                       }
                   }
                 }
@@ -212,7 +218,7 @@ class OctopusGraphQLClient:
             params={'accountNumber': account}
         )
         agreement, = data['account']['electricityAgreements']
-        return agreement['tariff']
+        return {**agreement['tariff'], 'timeOfUseScheme': agreement['timeOfUseScheme']}
 
 
 @dataclass
