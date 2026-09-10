@@ -76,6 +76,8 @@ uv run python tesla.py check --start min --end max                      # report
   agreement) whenever they change.
 - `octopus-gsp.py` prints the account's GSP region; `tariff-regions.py` compares a Kraken
   product's rates across regions (Octopus, EDF, E.ON Next).
+- `octopus-bill-rec.py SPREADSHEET` reconciles the Electricity sheet of the owner's
+  `utilities.ods` against Octopus's billed charges (GraphQL `account.transactions`).
 
 ## Architecture
 

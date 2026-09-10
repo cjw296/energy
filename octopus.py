@@ -122,6 +122,37 @@ class OctopusGraphQLClient:
                 e.add_note(f'message was: {message!r}')
                 raise
 
+    def transactions(self, account: str) -> list[dict[str, Any]]:
+        nodes: list[dict[str, Any]] = []
+        after = None
+        while True:
+            data = self.query(
+                'getTransactions',
+                query='''
+                    query getTransactions($accountNumber: String!, $after: String) {
+                      account(accountNumber: $accountNumber) {
+                        transactions(first: 100, after: $after) {
+                          pageInfo { hasNextPage endCursor }
+                          edges { node {
+                            __typename postedDate title isReversed
+                            amounts { net tax gross }
+                            ... on Charge {
+                              isExport
+                              consumption { startDate endDate quantity unit usageCost supplyCharge }
+                            }
+                          } }
+                        }
+                      }
+                    }
+                ''',
+                params={'accountNumber': account, 'after': after},
+            )
+            page = data['account']['transactions']
+            nodes.extend(edge['node'] for edge in page['edges'])
+            if not page['pageInfo']['hasNextPage']:
+                return nodes
+            after = page['pageInfo']['endCursor']
+
     @log_timeouts_and_return_none
     def dispatches(self, account: str) -> dict[str, list[dict[str, Any]]]:
         return self.query(
