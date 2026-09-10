@@ -57,6 +57,9 @@ class OctopusRESTClient:
         assert len(points) == 1, f'more than one point found: {points}'
         return points[0]
 
+    def gsp(self, mpan: str) -> str:
+        return self.get(f'/electricity-meter-points/{mpan}/')['gsp']
+
     def current_tariff_code(self, account, point_type):
         agreements = self.meter_point(account, point_type)['agreements']
         logging.debug(f'agreements: {pformat(agreements)}')

@@ -25,6 +25,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pook>=2.1.6",
     "pytest>=9.0.3",
     "testfixtures>=10.0.0",
 ]
