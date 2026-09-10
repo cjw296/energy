@@ -47,6 +47,36 @@ uv run pytest                     # all tests
 uv run pytest test_octopus.py     # single file
 ```
 
+## Data downloads
+
+Run from a directory containing `config.yaml`; files land in `directories.storage`.
+
+```bash
+uv run python octopus-download.py --start 2025-09-05 --end 2026-09-09   # octopus-DATE.csv
+uv run python myenergi.py download --start 2026-04-15 --end 2026-09-09  # zappi-DATE.json
+uv run python myenergi.py json_to_csv --start 2026-04-15 --end 2026-09-09
+uv run python tesla.py download --start 2026-04-15 --end 2026-09-09     # tesla-DATE.json
+uv run python tesla.py json_to_csv --start 2026-04-15 --end 2026-09-09
+uv run python tesla.py check --start min --end max                      # report missing samples
+```
+
+- `myenergi.py` and `tesla.py` take `--start`/`--end` as `YYYY-MM-DD`, `now`, or `min`/`max`
+  (earliest/latest existing file of that kind); `octopus-download.py` takes dates only.
+- `octopus-DATE.csv`: half-hourly grid import (kWh). Days with the wrong number of readings
+  are saved as `octopus-DATE-suspect.csv`.
+- `zappi-DATE.csv`: per-minute; `imp`/`exp` grid import/export and `h1b`/`h1d` zappi charge
+  from grid/diverted, in joules, with `_kw` columns in kW.
+- `tesla-DATE.csv`: 5-minute average power in W: `grid_power` (+ import), `battery_power`
+  (− charging), `solar_power`. Home load = solar + battery + grid.
+- `tesla.py` authenticates through TeslaPy's `cache.json` in the working directory and
+  refreshes its token. On 2026-09-10 `download` failed with `403 ... see
+  https://developer.tesla.com/docs/fleet-api` at `battery_list`; Tesla data stops at 2026-04-15.
+- `tesla-incoming.py` is legacy: it watched for Tesla app `data.csv` exports.
+- `octopus-tesla-sync.py` writes `octopus-dispatches-DATETIME.json` (dispatches, unit rates,
+  agreement) whenever they change.
+- `octopus-gsp.py` prints the account's GSP region; `tariff-regions.py` compares a Kraken
+  product's rates across regions (Octopus, EDF, E.ON Next).
+
 ## Architecture
 
 Top-level, no package structure:
@@ -56,10 +86,11 @@ Top-level, no package structure:
 - `octopus.py` / other `octopus-*.py`: Octopus Energy API client, download and billing scripts
 - `tesla.py` / other `tesla-*.py`: Tesla API client, backup/incoming/schedule scripts
 - `myenergi.py`: myenergi (Harvi/Zappi) API client
+- `kraken.py`: public Kraken product API (Octopus, EDF, E.ON Next) regional rates
 - `loaders.py`: pandas loaders for downloaded Octopus/Tesla CSVs
 - `schedule.py`: charge scheduling logic
 - `usage.py`, `show-changes.py`, `pretty.py`: reporting/inspection utilities
 - `*.ipynb`: exploratory notebooks, not covered by tests
-- `test_octopus.py`, `test_make_seasons.py`: the test suite, using `testfixtures`
+- `test_*.py`: the test suite, using `testfixtures`
 
 Config: `config.sample.yaml` is the template; a user's own `config.yaml` is gitignored.
