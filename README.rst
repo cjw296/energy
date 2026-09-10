@@ -86,6 +86,16 @@ and completed dispatch half hours at the night rate, everything else at the day 
 Octopus Go 6-hour smart-charge cap. ``octopus-tesla-sync.py`` runs the same check daily and
 emails an error on a mismatch.
 
+FiT deemed export vs metered (SEG) export
+-----------------------------------------
+
+With Tesla and zappi data downloaded, this compares what FiT deemed export paid each FiT
+year with what the actually-exported kWh would have earned on a metered export tariff:
+
+.. code-block:: bash
+
+  uv run fit-export-model.py path/to/utilities.ods --price 13
+
 Reconciling Tesla data with Octopus data
 ----------------------------------------
 

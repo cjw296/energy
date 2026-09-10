@@ -91,6 +91,8 @@ Top-level, no package structure:
 - `kraken.py`: public Kraken product API (Octopus, EDF, E.ON Next) regional rates
 - `billrec.py`: spreadsheet-vs-Octopus bill reconciliation; `billcheck.py`: checks billed
   usage against the sync's tariff model (run by `octopus-bill-rec.py` and daily by the sync)
+- `fitmodel.py` / `fit-export-model.py`: FiT deemed export vs metered export, from Tesla and
+  zappi data plus the spreadsheet's Solar sheet
 - `loaders.py`: pandas loaders for downloaded Octopus/Tesla CSVs
 - `schedule.py`: charge scheduling logic
 - `usage.py`, `show-changes.py`, `pretty.py`: reporting/inspection utilities
