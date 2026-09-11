@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 from configurator import Config
-from gql.transport.aiohttp import log as gql_logger
+from gql.transport.requests import log as gql_logger
 from teslapy import Tesla
 
 from common import DiffDumper, add_log_level, configure_logging, root_from

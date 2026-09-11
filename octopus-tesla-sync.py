@@ -10,7 +10,7 @@ from pprint import pformat
 from zoneinfo import ZoneInfo
 
 from configurator import Config
-from gql.transport.aiohttp import log as gql_logger
+from gql.transport.requests import log as gql_logger
 from pandas import Timestamp
 from teslapy import Tesla, Battery
 

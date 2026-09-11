@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 from gql import Client, gql
-from gql.transport.aiohttp import AIOHTTPTransport
+from gql.transport.requests import RequestsHTTPTransport
 from gql.transport.exceptions import TransportQueryError
 from pandas import Timestamp, date_range, Timedelta
 from requests import JSONDecodeError
@@ -25,6 +25,7 @@ class Rates:
 
 
 BASE_URL = "https://api.octopus.energy/v1/"
+GRAPHQL_TIMEOUT = 30
 
 
 class OctopusRESTClient:
@@ -98,7 +99,7 @@ class OctopusGraphQLClient:
 
     def __init__(self, api_key):
         self._api_key = api_key
-        self._transport = AIOHTTPTransport(BASE_URL + "/graphql/", headers={})
+        self._transport = RequestsHTTPTransport(BASE_URL + 'graphql/', headers={}, timeout=GRAPHQL_TIMEOUT)
         self._client = Client(transport=self._transport)
 
     def _query(self, operation_name: str, query: str, params: dict[str, Any]) -> dict[str, Any]:

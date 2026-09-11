@@ -12,7 +12,9 @@ from pathlib import Path
 from time import sleep
 from typing import Callable, Iterator, ParamSpec, Self, Any, TypeVar
 
+import requests
 from configurator import Config
+from gql.transport.exceptions import TransportConnectionFailed
 from mailinglogger import MailingLogger
 from pandas import Timestamp, date_range, to_datetime
 
@@ -220,13 +222,21 @@ def diff(a: Any, b: Any, a_label: str = '', b_label: str = ''):
     ))
 
 
+def is_timeout(error: Exception) -> bool:
+    return isinstance(error, TimeoutError) or (
+        isinstance(error, TransportConnectionFailed) and isinstance(error.__cause__, requests.exceptions.Timeout)
+    )
+
+
 def log_timeouts_and_return_none(c: Callable[P, T]) -> Callable[P, T | None]:
 
     @wraps(c)
     def _run(*args: P.args, **kwargs: P.kwargs) -> T:
         try:
             return c(*args, **kwargs)
-        except TimeoutError:
+        except Exception as error:
+            if not is_timeout(error):
+                raise
             message = f'Timeout getting {c.__name__}'
             logging.warning(message)
             logging.debug(message, exc_info=True)
