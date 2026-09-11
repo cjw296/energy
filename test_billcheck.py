@@ -1,10 +1,12 @@
 import json
+import re
 from datetime import date, time
 from decimal import Decimal
 from functools import partial
 from unittest.mock import Mock, call
 from zoneinfo import ZoneInfo
 
+import pook
 from pandas import Timestamp
 from testfixtures import LogCapture, ShouldRaise, compare as compare_
 
@@ -13,6 +15,7 @@ from billcheck import (
     load_dumps, model_checks, rate_periods,
 )
 from billrec import Charge
+from octopus import OctopusGraphQLClient, OctopusRESTClient
 
 compare = partial(compare_, strict=True)
 
@@ -143,49 +146,82 @@ def transaction(start, end, usage_cost, gross, net):
     }
 
 
+GRAPHQL = 'https://api.octopus.energy/v1/graphql/'
+REST = 'https://api.octopus.energy/v1'
+
+
+def stub_graphql(operation: str, data: dict) -> None:
+    pook.post(GRAPHQL).body(re.compile(f'"operationName": "{operation}"')).reply(200).json({'data': data})
+
+
+def stub_tariff(scheme: dict | None) -> None:
+    stub_graphql('krakenTokenAuthentication', {'obtainKrakenToken': {'token': 'tok'}})
+    stub_graphql('getProperties', {'account': {'electricityAgreements': [{
+        'validFrom': '2026-07-14T23:00:00+00:00', 'validTo': None,
+        'tariff': {'unitRates': UNIT_RATES}, 'timeOfUseScheme': scheme,
+    }]}})
+
+
+def stub_transactions(*nodes: dict) -> None:
+    stub_graphql('getTransactions', {'account': {'transactions': {
+        'pageInfo': {'hasNextPage': False, 'endCursor': None},
+        'edges': [{'node': node} for node in nodes],
+    }}})
+
+
+def stub_meter_point(*serials: str) -> None:
+    pook.get(f'{REST}/accounts/A-123/').reply(200).json({'properties': [{'electricity_meter_points': [
+        {'mpan': '200', 'meters': [{'serial_number': serial} for serial in serials]},
+    ]}]})
+
+
+def clients() -> tuple[OctopusGraphQLClient, OctopusRESTClient]:
+    return OctopusGraphQLClient('key'), OctopusRESTClient('key')
+
+
 def test_model_checks(tmp_path):
     (tmp_path / 'octopus-dispatches-2026-07-15-12-00-00.json').write_text(json.dumps({
         'dispatches': {'completedDispatches': [
             {'startDtUtc': '2026-07-15 11:00:00+00:00', 'endDtUtc': '2026-07-15 11:30:00+00:00'},
         ]},
     }))
-    graphql = Mock()
-    graphql.tariff.return_value = {
-        'unitRates': UNIT_RATES, 'timeOfUseScheme': SCHEME, 'agreementValidFrom': '2026-07-14T23:00:00+00:00',
-    }
-    graphql.transactions.return_value = [
-        transaction('2026-07-01', '2026-07-14', 100, 100, 95),
-        transaction('2026-07-15', '2026-07-15', 21, 21, 20),
-    ]
-    rest = Mock()
-    rest.meter_point.return_value = {'mpan': '200', 'meters': [{'serial_number': 'S1'}]}
-    rest.consumption.return_value = {utc('2026-07-15T00:00'): 1.0, utc('2026-07-15T11:00'): 2.0}
-
-    compare(model_checks(graphql, rest, 'A-123', tmp_path), expected=[
-        ModelCheck(Charge(date(2026, 7, 15), date(2026, 7, 15), Decimal('3.0'), Decimal('0.21'),
-                          Decimal('0'), Decimal('0.2')), Decimal('0.197142')),
-    ])
-    compare(list(rest.mock_calls), expected=[
-        call.meter_point('A-123', 'electricity_meter_points'),
-        call.consumption('200', ['S1'], Timestamp('2026-07-15', tz=London), Timestamp('2026-07-16', tz=London)),
-    ])
+    with pook.use():
+        stub_tariff(SCHEME)
+        stub_transactions(transaction('2026-07-01', '2026-07-14', usage_cost=100, gross=100, net=95),
+                          transaction('2026-07-15', '2026-07-15', usage_cost=21, gross=21, net=20))
+        stub_meter_point('S1')
+        pook.get(f'{REST}/electricity-meter-points/200/meters/S1/consumption/').params({
+            'period_from': '2026-07-15T00:00:00+01:00', 'period_to': '2026-07-16T00:00:00+01:00',
+            'order_by': 'period', 'page_size': '25000',
+        }).reply(200).json({'next': None, 'results': [
+            {'consumption': 1.0, 'interval_start': '2026-07-15T01:00:00+01:00'},  # night
+            {'consumption': 2.0, 'interval_start': '2026-07-15T12:00:00+01:00'},  # dispatch
+        ]})
+        compare(model_checks(*clients(), 'A-123', tmp_path), expected=[
+            ModelCheck(
+                charge=Charge(start=date(2026, 7, 15), end=date(2026, 7, 15), kwh=Decimal('3.0'),
+                              cost_inc_vat=Decimal('0.21'), standing_ex_vat=Decimal('0'),
+                              usage_ex_vat=Decimal('0.2')),
+                expected_ex_vat=Decimal('0.197142'),
+            ),
+        ])
+        compare(pook.isdone(), expected=True)
 
 
 def test_model_checks_since(tmp_path):
-    graphql = Mock()
-    graphql.tariff.return_value = {
-        'unitRates': UNIT_RATES, 'timeOfUseScheme': SCHEME, 'agreementValidFrom': '2026-07-14T23:00:00+00:00',
-    }
-    graphql.transactions.return_value = [transaction('2026-07-15', '2026-08-31', 21, 21, 20)]
-    rest = Mock()
-    rest.meter_point.return_value = {'mpan': '200', 'meters': []}
-    compare(model_checks(graphql, rest, 'A-123', tmp_path, since=date(2026, 8, 31)), expected=[])
+    with pook.use():
+        stub_tariff(SCHEME)
+        stub_transactions(transaction('2026-07-15', '2026-08-31', usage_cost=21, gross=21, net=20))
+        stub_meter_point()
+        compare(model_checks(*clients(), 'A-123', tmp_path, since=date(2026, 8, 31)), expected=[])
+        compare(pook.isdone(), expected=True)
 
 
 def test_model_checks_no_time_of_use_scheme(tmp_path):
-    graphql = Mock()
-    graphql.tariff.return_value = {'unitRates': [], 'timeOfUseScheme': None, 'agreementValidFrom': None}
-    compare(model_checks(graphql, Mock(), 'A-123', tmp_path), expected=[])
+    with pook.use():
+        stub_tariff(None)
+        compare(model_checks(*clients(), 'A-123', tmp_path), expected=[])
+        compare(pook.isdone(), expected=True)
 
 
 def test_daily_model_check():
