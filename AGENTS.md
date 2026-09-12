@@ -6,6 +6,7 @@
 - **No unrelated failures**: if `./happy.sh` fails on something unrelated to your changes, do NOT assume it is a pre-existing problem and proceed anyway. Stop immediately and ask the user how to proceed.
 - **Use `compare()` in tests**: never use bare `assert` statements; always use `compare(actual, expected=...)` from `testfixtures` for assertions.
 - **All new code must be tested**: no untested functionality, ever.
+- **Readable test data**: build dataclasses and other multi-field objects in tests with keyword arguments, or a small helper whose defaults cover the fields the test doesn't care about; never a long positional sequence the reader has to decode.
 - **Stub HTTP with `pook`**: in tests, intercept HTTP calls with `pook` (a dev dependency) rather than injecting callables or `Mock`s into production code just to make it testable.
 - **Reproduce before fixing**: when fixing a bug, add a failing test and watch it fail before changing any code.
 - **Succinct, high-signal prose**: in docs, comments, and messages to the user, say only what adds information; cut filler.
