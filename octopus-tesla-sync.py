@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum, auto
 from pprint import pformat
 from zoneinfo import ZoneInfo
 
@@ -29,14 +30,21 @@ def make_demand_charges() -> dict:
     }
 
 
+class Sync(StrEnum):
+    always = auto()
+    never = auto()
+    if_changed = auto()
+
+
 @dataclass(repr=False)
 class Syncer:
     graphql_client: OctopusGraphQLClient
     account: str
-    dumper: DiffDumper | None
+    octopus_dumper: DiffDumper | None
+    tesla_dumper: DiffDumper | None
     battery: Battery
     timezone: ZoneInfo
-    sync: bool
+    sync: Sync
     force: bool
     tesla_tariff: dict | None = None
 
@@ -53,19 +61,20 @@ class Syncer:
         unit_rates_schedule = tariff.pop('unitRates')
 
         # dump to json if things have changed:
-        if self.dumper is not None:
-            self.dumper.update(
+        if self.octopus_dumper is not None:
+            self.octopus_dumper.update(
                 {'dispatches': dispatches, 'unit_rates': unit_rates_schedule, 'agreement': tariff},
                 force=self.force
             )
 
-        if not self.sync:
-            logging.warning('not updating Tesla schedule!')
-            return
-
         # get the current tesla tariff config:
         if not self.tesla_tariff:
             self.tesla_tariff = self.battery.get_tariff()
+        if self.tesla_dumper is not None:
+            self.tesla_dumper.update(
+                self.tesla_tariff,
+                force=self.force
+            )
 
         # build the tariff we think we need:
         required_tariff = deepcopy(self.tesla_tariff)
@@ -76,14 +85,25 @@ class Syncer:
         required_tariff.update(
             make_seasons_and_energy_charges(now, unit_rates_schedule, dispatches, self.timezone)
         )
-        # update the tariff via the tesla API if it's changed:
-        if self.tesla_tariff != required_tariff or self.force:
+
+        changed = self.tesla_tariff != required_tariff
+        match self.sync:
+            case Sync.never:
+                sync = False
+            case Sync.always:
+                sync = True
+            case Sync.if_changed:
+                sync = changed
+
+        if sync:
             planned_dispatches = dispatches['plannedDispatches']
             logging.info(f'Planned dispatches:\n{pformat(planned_dispatches, sort_dicts=False)}')
             self.battery.set_tariff(required_tariff)
             diff_text = diff(self.tesla_tariff, required_tariff, )
             logging.info(f'Tesla tariff updated:\n{diff_text}')
             self.tesla_tariff = self.battery.get_tariff()
+        elif changed:
+            logging.warning('not updating Tesla schedule!')
 
 
 def main():
@@ -91,8 +111,8 @@ def main():
     add_log_level(parser)
     parser.add_argument('--run-every', type=int)
     parser.add_argument('--no-dump', action='store_false', dest='dump')
-    parser.add_argument('--no-sync', action='store_false', dest='sync', help='never sync')
-    parser.add_argument('--force', action='store_true', help='force dump and sync')
+    parser.add_argument('--sync', choices=Sync, default=Sync.if_changed)
+    parser.add_argument('--force', action='store_true', help='force dump')
 
     args = parser.parse_args()
     configure_logging(args.log_level, args.unattended)
@@ -103,7 +123,8 @@ def main():
     account = config.octopus.account
 
     graphql_client = OctopusGraphQLClient(api_key)
-    dumper = DiffDumper(storage, prefix='octopus-dispatches') if args.dump else None
+    octopus_dumper = DiffDumper(storage, prefix='octopus-dispatches') if args.dump else None
+    tesla_dumper = DiffDumper(storage, prefix='tesla-schedule') if args.dump else None
 
     tesla = Tesla(config.tesla.email)
     battery, = tesla.battery_list()
@@ -111,7 +132,8 @@ def main():
     syncer = Syncer(
         graphql_client,
         account,
-        dumper,
+        octopus_dumper,
+        tesla_dumper,
         battery,
         installation_time_zone(battery),
         args.sync,
