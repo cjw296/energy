@@ -40,3 +40,24 @@ def test_gsp():
          .reply(200).json({'gsp': '_C', 'mpan': '1000000000000', 'profile_class': 1}))
         compare(OctopusRESTClient('key').gsp('1000000000000'), expected='_C')
         compare(pook.isdone(), expected=True)
+
+
+def test_unit_rates_paginates_and_keeps_direct_debit():
+    tariff = 'https://api.octopus.energy/v1/products/P/electricity-tariffs/E-1R-P-H/'
+
+    def rate(value: float, payment_method: str | None) -> dict:
+        return {'value_exc_vat': value, 'valid_from': '2026-07-05T23:00:00Z', 'valid_to': None,
+                'payment_method': payment_method}
+
+    with pook.use():
+        pook.get(tariff + 'day-unit-rates/').params(
+            {'period_from': '2026-07-14T23:00:00+00:00', 'page_size': '1500'}
+        ).reply(200).json({'next': 'https://api.octopus.energy/v1/page2', 'results': [
+            rate(28.9, 'DIRECT_DEBIT'), rate(30.1, 'NON_DIRECT_DEBIT'),
+        ]})
+        pook.get('https://api.octopus.energy/v1/page2').reply(200).json({'next': None, 'results': [
+            rate(25.0, None),
+        ]})
+        rates = OctopusRESTClient('key').unit_rates('P', 'E-1R-P-H', 'day', Timestamp('2026-07-14T23:00', tz='UTC'))
+        compare(rates, expected=[rate(28.9, 'DIRECT_DEBIT'), rate(25.0, None)])
+        compare(pook.isdone(), expected=True)

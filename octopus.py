@@ -78,6 +78,22 @@ class OctopusRESTClient:
                 data = self.get(data['next'])
         return totals
 
+    def unit_rates(self, product: str, tariff: str, kind: str, period_from: Timestamp) -> list[dict]:
+        """
+        Direct-debit unit rates of `kind` (day, night, standard...) in force since `period_from`.
+        """
+        data = self.get(
+            f'/products/{product}/electricity-tariffs/{tariff}/{kind}-unit-rates/',
+            period_from=period_from.isoformat(), page_size=1500,
+        )
+        rates = []
+        while True:
+            rates.extend(rate for rate in data['results']
+                         if rate.get('payment_method') in (None, 'DIRECT_DEBIT'))
+            if not data['next']:
+                return rates
+            data = self.get(data['next'])
+
     def gsp(self, mpan: str) -> str:
         return self.get(f'/electricity-meter-points/{mpan}/')['gsp']
 

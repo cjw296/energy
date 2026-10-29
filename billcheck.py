@@ -26,11 +26,15 @@ class RatePeriod:
     night: Decimal
 
 
-def rate_periods(unit_rates: list[dict[str, Any]]) -> list[RatePeriod]:
+def rate_periods(day_rates: list[dict[str, Any]], night_rates: list[dict[str, Any]]) -> list[RatePeriod]:
     by_period: dict[tuple, dict[str, Decimal]] = {}
-    for rate in unit_rates:
-        key = rate['validFrom'], rate['validTo']
-        by_period.setdefault(key, {})[rate['rateType']] = Decimal(str(rate['preVatValue']))
+    for name, rates in ((DAY, day_rates), (NIGHT, night_rates)):
+        for rate in rates:
+            key = rate['valid_from'], rate['valid_to']
+            by_period.setdefault(key, {})[name] = Decimal(str(rate['value_exc_vat']))
+    for (start, end), rates in by_period.items():
+        if set(rates) != {DAY, NIGHT}:
+            raise ValueError(f'Day and night rates cover different periods: {start}..{end} has {sorted(rates)}')
     return sorted(
         (RatePeriod(Timestamp(start), None if end is None else Timestamp(end), rates[DAY], rates[NIGHT])
          for (start, end), rates in by_period.items()),
@@ -117,8 +121,10 @@ def model_checks(graphql, rest, account: str, dumps_root: Path, since: date | No
         return []
     tz = ZoneInfo(scheme['timezone'])
     night = time_of_use_slots(scheme)[NIGHT]
-    rates = rate_periods(tariff['unitRates'])
     agreement_start = Timestamp(tariff['agreementValidFrom'])
+    product, code = tariff['productCode'], tariff['tariffCode']
+    rates = rate_periods(rest.unit_rates(product, code, 'day', agreement_start),
+                         rest.unit_rates(product, code, 'night', agreement_start))
     charges = [
         charge for charge in charges_from_transactions(graphql.transactions(account))
         if local_midnight(charge.start, tz) >= agreement_start and (since is None or charge.end > since)

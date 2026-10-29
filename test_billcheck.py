@@ -32,11 +32,15 @@ def unit_rate(rate_type: str, value: float, pre_vat: float, valid_from='2026-07-
             'rateType': rate_type}
 
 
-UNIT_RATES = [
-    unit_rate('EV_DEVICE_PEAK', value=30.371355, pre_vat=28.9251),
-    unit_rate('EV_DEVICE_OFF_PEAK', value=6.89997, pre_vat=6.5714),
-    unit_rate('ECO7_NIGHT', value=6.89997, pre_vat=6.5714),
-    unit_rate('ECO7_DAY', value=30.371355, pre_vat=28.9251),
+def rest_rate(value_exc_vat: float, valid_from='2026-07-05T23:00:00Z', valid_to=None) -> dict:
+    return {'value_exc_vat': value_exc_vat, 'value_inc_vat': value_exc_vat, 'valid_from': valid_from,
+            'valid_to': valid_to, 'payment_method': None}
+
+
+CURRENT_UNIT_RATES = [
+    unit_rate(rate_type, value=value, pre_vat=value, valid_from='2026-10-15T23:00:00+00:00')
+    for rate_type, value in (('EV_DEVICE_PEAK', 36.3918), ('EV_DEVICE_OFF_PEAK', 6.6),
+                             ('ECO7_NIGHT', 6.6), ('ECO7_DAY', 36.3918))
 ]
 
 RATES = [RatePeriod(start=utc('2026-07-05T23:00'), end=None, day=Decimal('28.9251'), night=Decimal('6.5714'))]
@@ -57,11 +61,21 @@ def charge(start='2026-07-15', end='2026-08-31', usage_ex_vat='12.34') -> Charge
 
 
 def test_rate_periods():
-    later = [unit_rate(t, value=1, pre_vat=2 if t == 'ECO7_DAY' else 1, valid_from='2026-10-01T00:00:00+01:00')
-             for t in ('ECO7_DAY', 'ECO7_NIGHT')]
-    compare(rate_periods(later + UNIT_RATES), expected=RATES + [
-        RatePeriod(start=Timestamp('2026-10-01T00:00:00+01:00'), end=None, day=Decimal('2'), night=Decimal('1')),
+    repriced = '2026-10-15T23:00:00Z'
+    day = [rest_rate(36.3918, valid_from=repriced), rest_rate(28.9251, valid_to=repriced)]
+    night = [rest_rate(6.6, valid_from=repriced), rest_rate(6.5714, valid_to=repriced)]
+    compare(rate_periods(day, night), expected=[
+        RatePeriod(start=utc('2026-07-05T23:00'), end=utc('2026-10-15T23:00'),
+                   day=Decimal('28.9251'), night=Decimal('6.5714')),
+        RatePeriod(start=utc('2026-10-15T23:00'), end=None, day=Decimal('36.3918'), night=Decimal('6.6')),
     ])
+
+
+def test_rate_periods_mismatched():
+    with ShouldRaise(ValueError(
+        "Day and night rates cover different periods: 2026-07-05T23:00:00Z..None has ['ECO7_DAY']"
+    )):
+        rate_periods([rest_rate(28.9251)], [rest_rate(6.5714, valid_to='2026-10-15T23:00:00Z')])
 
 
 def test_in_window():
@@ -158,8 +172,18 @@ def stub_tariff(scheme: dict | None) -> None:
     stub_graphql('krakenTokenAuthentication', {'obtainKrakenToken': {'token': 'tok'}})
     stub_graphql('getProperties', {'account': {'electricityAgreements': [{
         'validFrom': '2026-07-14T23:00:00+00:00', 'validTo': None,
-        'tariff': {'unitRates': UNIT_RATES}, 'timeOfUseScheme': scheme,
+        'tariff': {'productCode': 'IOG-SMB-VAR-24-10-29', 'tariffCode': 'E-1R-IOG-SMB-VAR-24-10-29-H',
+                   'unitRates': CURRENT_UNIT_RATES},
+        'timeOfUseScheme': scheme,
     }]}})
+
+
+def stub_rate_history() -> None:
+    tariff = f'{REST}/products/IOG-SMB-VAR-24-10-29/electricity-tariffs/E-1R-IOG-SMB-VAR-24-10-29-H'
+    for kind, value in (('day', 28.9251), ('night', 6.5714)):
+        pook.get(f'{tariff}/{kind}-unit-rates/').params(
+            {'period_from': '2026-07-14T23:00:00+00:00', 'page_size': '1500'}
+        ).reply(200).json({'next': None, 'results': [rest_rate(value)]})
 
 
 def stub_transactions(*nodes: dict) -> None:
@@ -187,6 +211,7 @@ def test_model_checks(tmp_path):
     }))
     with pook.use():
         stub_tariff(SCHEME)
+        stub_rate_history()
         stub_transactions(transaction('2026-07-01', '2026-07-14', usage_cost=100, gross=100, net=95),
                           transaction('2026-07-15', '2026-07-15', usage_cost=21, gross=21, net=20))
         stub_meter_point('S1')
@@ -211,6 +236,7 @@ def test_model_checks(tmp_path):
 def test_model_checks_since(tmp_path):
     with pook.use():
         stub_tariff(SCHEME)
+        stub_rate_history()
         stub_transactions(transaction('2026-07-15', '2026-08-31', usage_cost=21, gross=21, net=20))
         stub_meter_point()
         compare(model_checks(*clients(), 'A-123', tmp_path, since=date(2026, 8, 31)), expected=[])
