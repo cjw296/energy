@@ -1,10 +1,12 @@
+from datetime import date
 from functools import partial
+from zoneinfo import ZoneInfo
 
 import pook
 from pandas import Timestamp
-from testfixtures import compare as compare_
+from testfixtures import ShouldRaise, compare as compare_
 
-from octopus import OctopusRESTClient
+from octopus import OctopusRESTClient, readings_by_day
 
 compare = partial(compare_, strict=True)
 
@@ -61,3 +63,68 @@ def test_unit_rates_paginates_and_keeps_direct_debit():
         rates = OctopusRESTClient('key').unit_rates('P', 'E-1R-P-H', 'day', Timestamp('2026-07-14T23:00', tz='UTC'))
         compare(rates, expected=[rate(28.9, 'DIRECT_DEBIT'), rate(25.0, None)])
         compare(pook.isdone(), expected=True)
+
+
+METER = 'https://api.octopus.energy/v1/electricity-meter-points/200/meters/S1/consumption/'
+
+
+def reading(start: str, consumption: float = 0.5) -> dict:
+    return {'consumption': consumption, 'interval_start': start, 'interval_end': start}
+
+
+def test_readings_asks_for_one_page():
+    with pook.use():
+        pook.get(METER).params({'order_by': 'period', 'page_size': '25000', 'period_from': 'from',
+                                'period_to': 'to'}).reply(200).json({'next': None, 'results': [
+            reading('2026-10-24T23:30:00+01:00'),
+        ]})
+        compare(OctopusRESTClient('key').readings('electricity-meter-points', '200', 'S1', 'from', 'to'),
+                expected=[reading('2026-10-24T23:30:00+01:00')])
+        compare(pook.isdone(), expected=True)
+
+
+def test_readings_without_period():
+    with pook.use():
+        pook.get(METER).params({'order_by': 'period', 'page_size': '25000'}).reply(200).json(
+            {'next': None, 'results': []})
+        compare(OctopusRESTClient('key').readings('electricity-meter-points', '200', 'S1'), expected=[])
+        compare(pook.isdone(), expected=True)
+
+
+def test_readings_paginates():
+    with pook.use():
+        pook.get(METER).reply(200).json({'next': 'https://api.octopus.energy/v1/page2', 'results': [
+            reading('2026-10-24T23:00:00+01:00'),
+        ]})
+        pook.get('https://api.octopus.energy/v1/page2').reply(200).json({'next': None, 'results': [
+            reading('2026-10-24T23:30:00+01:00'),
+        ]})
+        compare(OctopusRESTClient('key').readings('electricity-meter-points', '200', 'S1'), expected=[
+            reading('2026-10-24T23:00:00+01:00'), reading('2026-10-24T23:30:00+01:00'),
+        ])
+        compare(pook.isdone(), expected=True)
+
+
+def test_readings_duplicate_half_hour():
+    with pook.use():
+        pook.get(METER).reply(200).json({'next': None, 'results': [
+            reading('2026-10-26T10:00:00Z'), reading('2026-10-26T10:00:00+00:00', consumption=0.7),
+        ]})
+        with ShouldRaise(ValueError('Duplicate readings from S1 for 2026-10-26 10:00:00+00:00')):
+            OctopusRESTClient('key').readings('electricity-meter-points', '200', 'S1')
+
+
+def test_readings_by_day():
+    readings = [
+        reading('2026-10-26T00:00:00Z'),
+        reading('2026-10-25T00:30:00+01:00'),
+        reading('2026-10-24T23:30:00+01:00'),
+        reading('2026-10-25T00:00:00+01:00'),
+        reading('2026-10-25T23:30:00Z'),
+    ]
+    compare(readings_by_day(readings, ZoneInfo('Europe/London')), expected={
+        date(2026, 10, 24): [reading('2026-10-24T23:30:00+01:00')],
+        date(2026, 10, 25): [reading('2026-10-25T00:00:00+01:00'), reading('2026-10-25T00:30:00+01:00'),
+                             reading('2026-10-25T23:30:00Z')],
+        date(2026, 10, 26): [reading('2026-10-26T00:00:00Z')],
+    })

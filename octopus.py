@@ -1,7 +1,7 @@
 import logging
 from collections import deque
 from dataclasses import dataclass
-from datetime import datetime, timedelta, time
+from datetime import date, datetime, timedelta, time
 from decimal import Decimal
 from itertools import chain
 from pprint import pformat
@@ -26,6 +26,17 @@ class Rates:
 
 BASE_URL = "https://api.octopus.energy/v1/"
 GRAPHQL_TIMEOUT = 30
+
+
+def readings_by_day(readings: list[dict], tz: ZoneInfo) -> dict[date, list[dict]]:
+    """
+    Readings in time order, grouped by local date.
+    """
+    by_day: dict[date, list[dict]] = {}
+    for reading in sorted(readings, key=lambda reading: Timestamp(reading['interval_start'])):
+        day = Timestamp(reading['interval_start']).tz_convert(tz).date()
+        by_day.setdefault(day, []).append(reading)
+    return by_day
 
 
 class OctopusRESTClient:
@@ -64,19 +75,39 @@ class OctopusRESTClient:
         """Half-hourly import in kWh keyed by UTC interval start, summed across meters."""
         totals: dict[Timestamp, float] = {}
         for serial in serials:
-            data = self.get(
-                f'/electricity-meter-points/{mpan}/meters/{serial}/consumption/',
-                period_from=start.isoformat(), period_to=end.isoformat(),
-                order_by='period', page_size=25000,
-            )
-            while True:
-                for reading in data['results']:
-                    interval = Timestamp(reading['interval_start']).tz_convert('UTC')
-                    totals[interval] = totals.get(interval, 0.0) + reading['consumption']
-                if not data['next']:
-                    break
-                data = self.get(data['next'])
+            for reading in self.readings(
+                    'electricity-meter-points', mpan, serial, start.isoformat(), end.isoformat()
+            ):
+                interval = Timestamp(reading['interval_start']).tz_convert('UTC')
+                totals[interval] = totals.get(interval, 0.0) + reading['consumption']
         return totals
+
+    def readings(
+            self, endpoint: str, mpxn: str, serial: str,
+            period_from: str | None = None, period_to: str | None = None,
+    ) -> list[dict]:
+        """
+        One meter's half-hourly readings, fetched as a single page: when Octopus paginates
+        these, its pages overlap and skip readings.
+        """
+        params: dict[str, Any] = {'order_by': 'period', 'page_size': 25000}
+        for name, value in (('period_from', period_from), ('period_to', period_to)):
+            if value is not None:
+                params[name] = value
+        data = self.get(f'/{endpoint}/{mpxn}/meters/{serial}/consumption/', **params)
+        readings = []
+        while True:
+            readings.extend(data['results'])
+            if not data['next']:
+                break
+            data = self.get(data['next'])
+        seen = set()
+        for reading in readings:
+            start = Timestamp(reading['interval_start']).tz_convert('UTC')
+            if start in seen:
+                raise ValueError(f'Duplicate readings from {serial} for {start}')
+            seen.add(start)
+        return readings
 
     def unit_rates(self, product: str, tariff: str, kind: str, period_from: Timestamp) -> list[dict]:
         """

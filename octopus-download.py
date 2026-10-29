@@ -1,39 +1,15 @@
 import csv
 import logging
 from argparse import ArgumentParser
-from itertools import groupby
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pendulum
 from configurator import Config
 from pendulum import DateTime
 
 from common import add_log_level, configure_logging
-from octopus import OctopusRESTClient
-
-
-def from_octopus(
-        client,
-        mpan,
-        meter_serials,
-        endpoint: str,
-        start=None,
-        end=None,
-):
-    params = {'order_by': 'period'}
-    for name, value in (('period_from', start), ('period_to', end)):
-        if value is not None:
-            params[name] = str(value)
-    for meter_serial in meter_serials:
-        data = client.get(f"/{endpoint}/{mpan}/meters/{meter_serial}/consumption/", **params)
-        while True:
-            for reading in data['results']:
-                reading['meter_serial'] = meter_serial
-                yield reading
-            if data['next']:
-                data = client.get(data['next'])
-            else:
-                break
+from octopus import OctopusRESTClient, readings_by_day
 
 
 READINGS_PER_DAY = int(24*60/30)
@@ -73,18 +49,16 @@ def download(
     else:
         serial_numbers = [m['serial_number'] for m in meter_point['meters']]
 
-    for date, group in groupby(
-            from_octopus(
-                client,
-                mpxn,
-                serial_numbers,
-                endpoint,
-                start,
-                end
-            ),
-            lambda row: pendulum.parse(row['interval_start']).date()
-    ):
-        readings = sorted(group, key=lambda row: pendulum.parse(row['interval_start']))
+    all_readings = []
+    for serial_number in serial_numbers:
+        for reading in client.readings(
+                endpoint, mpxn, serial_number,
+                None if start is None else str(start), None if end is None else str(end),
+        ):
+            reading['meter_serial'] = serial_number
+            all_readings.append(reading)
+
+    for date, readings in readings_by_day(all_readings, ZoneInfo('Europe/London')).items():
         suffix = ''
         if len(readings) != expected_readings_per_day(readings):
             logging.warning(
