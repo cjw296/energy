@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 from statistics import mean
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -8,6 +9,7 @@ from zoneinfo import ZoneInfo
 from pandas import Timedelta, Timestamp
 
 from billcheck import in_window
+from octopus import OctopusGraphQLClient
 from schedule import NIGHT, time_of_use_slots
 
 MIN_READINGS = 6
@@ -47,7 +49,7 @@ class PeakImportWatch:
         start = now - self.window
         readings = self.telemetry(start, now)
         if not readings:
-            logging.warning(f'No smart meter readings between {start} and {now}')
+            logging.error(f'No smart meter readings between {start} and {now}')
             return
         demand = [float(reading['demand']) for reading in readings if not cheap(Timestamp(reading['readAt']))]
         if len(demand) < MIN_READINGS:
@@ -56,3 +58,13 @@ class PeakImportWatch:
         if average > self.threshold_w:
             minutes = int(self.window.total_seconds() // 60)
             logging.error(f'Importing {average / 1000:.1f} kW from the grid at peak rate (last {minutes} minutes)')
+
+
+def peak_watch(graphql_client: OctopusGraphQLClient, account: str, threshold_w: float) -> PeakImportWatch | None:
+    if not threshold_w:
+        return None
+    device_ids = graphql_client.smart_device_ids(account)
+    if not device_ids:
+        logging.error('No smart meter device found, so no peak import alerts')
+        return None
+    return PeakImportWatch(partial(graphql_client.telemetry, device_ids[0]), threshold_w)

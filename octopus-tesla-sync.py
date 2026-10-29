@@ -17,7 +17,7 @@ from teslapy import Tesla, Battery
 from billcheck import DailyModelCheck, model_checks
 from common import DiffDumper, add_log_level, configure_logging, Run, diff, root_from
 from octopus import OctopusGraphQLClient, OctopusRESTClient
-from peakwatch import PeakImportWatch
+from peakwatch import peak_watch
 from tesla import installation_time_zone
 from schedule import make_seasons_and_energy_charges
 
@@ -124,16 +124,6 @@ class Syncer:
             self.tesla_tariff = self.battery.get_tariff()
         elif changed:
             logging.warning('not updating Tesla schedule!')
-
-
-def peak_watch(graphql_client: OctopusGraphQLClient, account: str, threshold_w: float) -> PeakImportWatch | None:
-    if not threshold_w:
-        return None
-    device_ids = graphql_client.smart_device_ids(account)
-    if not device_ids:
-        logging.warning('No smart meter device found, so no peak import alerts')
-        return None
-    return PeakImportWatch(partial(graphql_client.telemetry, device_ids[0]), threshold_w)
 
 
 def main():
