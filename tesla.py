@@ -27,11 +27,9 @@ def tesla_formatted_dt(dt: Timestamp) -> str:
 def tesla_end_dates(
         start: Timestamp, end: Timestamp, tz: ZoneInfo
 ) -> Iterator[tuple[Timestamp, Timestamp]]:
-    current = with_tz(min(start, end), tz)
-    end = with_tz(max(start, end), tz)
-    while current <= end:
+    for day in date_range(min(start, end).date(), max(start, end).date(), freq='D'):
+        current = with_tz(day, tz)
         yield current, current.replace(hour=23, minute=59, second=59)
-        current += timedelta(days=1)
 
 
 def call_with_retry(c, *args, **kw):

@@ -7,7 +7,7 @@ from testfixtures import LogCapture, Replace, compare as compare_, ShouldRaise, 
 
 compare = partial(compare_, strict=True)
 
-from tesla import check, check_measurement_count, parse_tesla_auth_output, parse_tesla_auth_section, seed_tesla_token
+from tesla import check, check_measurement_count, tesla_end_dates, parse_tesla_auth_output, parse_tesla_auth_section, seed_tesla_token
 
 OUTPUT = """
 --------------------------------- ACCESS TOKEN ---------------------------------
@@ -127,3 +127,14 @@ def test_check_uses_local_zone_for_saved_days(tmp_path):
                             'latest found: 2026-10-25T23:55:00Z, end_date=2026-10-25 23:59:59+00:00'),
         ('root', 'WARNING', 'Missing: 2026-10-25 23:30:00+00:00'),
     )
+
+
+def test_tesla_end_dates_across_clock_change():
+    london = ZoneInfo('Europe/London')
+    compare([(day.isoformat(), end.isoformat()) for day, end in tesla_end_dates(
+        Timestamp('2026-10-24 09:00', tz=london), Timestamp('2026-10-26 21:00', tz=london), london
+    )], expected=[
+        ('2026-10-24T00:00:00+01:00', '2026-10-24T23:59:59+01:00'),
+        ('2026-10-25T00:00:00+01:00', '2026-10-25T23:59:59+00:00'),
+        ('2026-10-26T00:00:00+00:00', '2026-10-26T23:59:59+00:00'),
+    ])
