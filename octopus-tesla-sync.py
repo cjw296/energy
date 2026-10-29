@@ -17,6 +17,7 @@ from teslapy import Tesla, Battery
 from billcheck import DailyModelCheck, model_checks
 from common import DiffDumper, add_log_level, configure_logging, Run, diff, root_from
 from octopus import OctopusGraphQLClient, OctopusRESTClient
+from peakwatch import PeakImportWatch
 from tesla import installation_time_zone
 from schedule import make_seasons_and_energy_charges
 
@@ -51,6 +52,7 @@ class Syncer:
     force: bool
     tesla_tariff: dict | None = None
     model_check: Callable[[date], None] | None = None
+    peak_watch: Callable[[Timestamp, dict | None, dict], None] | None = None
 
     def __call__(self):
         now = Timestamp(datetime.now().astimezone())
@@ -76,6 +78,12 @@ class Syncer:
                 self.model_check(now.date())
             except Exception:
                 logging.exception('Tariff model check failed')
+
+        if self.peak_watch is not None:
+            try:
+                self.peak_watch(now, tariff.get('timeOfUseScheme'), dispatches)
+            except Exception:
+                logging.exception('Peak import check failed')
 
         # get the current tesla tariff config:
         if not self.tesla_tariff:
@@ -118,6 +126,16 @@ class Syncer:
             logging.warning('not updating Tesla schedule!')
 
 
+def peak_watch(graphql_client: OctopusGraphQLClient, account: str, threshold_w: float) -> PeakImportWatch | None:
+    if not threshold_w:
+        return None
+    device_ids = graphql_client.smart_device_ids(account)
+    if not device_ids:
+        logging.warning('No smart meter device found, so no peak import alerts')
+        return None
+    return PeakImportWatch(partial(graphql_client.telemetry, device_ids[0]), threshold_w)
+
+
 def main():
     parser = ArgumentParser()
     add_log_level(parser)
@@ -125,6 +143,8 @@ def main():
     parser.add_argument('--no-dump', action='store_false', dest='dump')
     parser.add_argument('--sync', choices=Sync, default=Sync.if_changed)
     parser.add_argument('--force', action='store_true', help='force dump')
+    parser.add_argument('--peak-alert-watts', type=float, default=500,
+                        help='log an error when importing more than this at peak rate; 0 to disable')
 
     args = parser.parse_args()
     configure_logging(args.log_level, args.unattended)
@@ -153,6 +173,7 @@ def main():
         model_check=DailyModelCheck(
             partial(model_checks, graphql_client, OctopusRESTClient(api_key), account, storage)
         ),
+        peak_watch=peak_watch(graphql_client, account, args.peak_alert_watts),
     )
 
     run = Run(syncer)

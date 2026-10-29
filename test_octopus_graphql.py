@@ -3,6 +3,7 @@ from functools import partial
 
 import pook
 from gql.transport.exceptions import TransportQueryError
+from pandas import Timestamp
 from testfixtures import ShouldRaise, compare as compare_
 
 from octopus import OctopusGraphQLClient
@@ -15,6 +16,8 @@ GRAPHQL = 'https://api.octopus.energy/v1/graphql/'
 TARIFF_FIELDS = ('rateType', 'preVatValue', 'timeOfUseScheme', 'activeFrom', 'activeTo')
 DISPATCH_FIELDS = ('plannedDispatches', 'completedDispatches', 'startDt', 'endDt', 'source')
 TRANSACTION_FIELDS = ('isReversed', 'isExport', 'usageCost', 'supplyCharge', 'quantity', 'endCursor')
+DEVICE_FIELDS = ('electricityAgreements', 'smartDevices', 'deviceId')
+TELEMETRY_FIELDS = ('smartMeterTelemetry', 'TEN_SECONDS', 'readAt', 'demand')
 
 
 def stub_token(token: str = 'tok') -> None:
@@ -87,3 +90,36 @@ def test_other_query_error_raises_with_note():
         with ShouldRaise(TransportQueryError) as s:
             OctopusGraphQLClient('key').transactions('A-123')
     compare(s.raised.__notes__, expected=["message was: 'Unauthorized.'"])
+
+
+def test_smart_device_ids():
+    with pook.use():
+        stub_token()
+        stub_query('getSmartDevices', {'data': {'account': {'electricityAgreements': [{'meterPoint': {'meters': [
+            {'smartDevices': [{'deviceId': 'D1'}]}, {'smartDevices': []},
+        ]}}]}}}, 'tok', *DEVICE_FIELDS)
+        compare(OctopusGraphQLClient('key').smart_device_ids('A-123'), expected=['D1'])
+        compare(pook.isdone(), expected=True)
+
+
+def test_telemetry():
+    readings = [{'readAt': '2026-10-29T20:53:00+00:00', 'demand': '1860.0'}]
+    with pook.use():
+        stub_token()
+        stub_query('getTelemetry', {'data': {'smartMeterTelemetry': readings}}, 'tok', *TELEMETRY_FIELDS,
+                   '"deviceId": "D1"', '"start": "2026-10-29T20:48:00+00:00"',
+                   '"end": "2026-10-29T20:53:00+00:00"')
+        compare(OctopusGraphQLClient('key').telemetry(
+            'D1', Timestamp('2026-10-29T20:48', tz='UTC'), Timestamp('2026-10-29T20:53', tz='UTC')
+        ), expected=readings)
+        compare(pook.isdone(), expected=True)
+
+
+def test_telemetry_none():
+    with pook.use():
+        stub_token()
+        stub_query('getTelemetry', {'data': {'smartMeterTelemetry': None}})
+        compare(OctopusGraphQLClient('key').telemetry(
+            'D1', Timestamp('2026-10-29T20:48', tz='UTC'), Timestamp('2026-10-29T20:53', tz='UTC')
+        ), expected=[])
+        compare(pook.isdone(), expected=True)

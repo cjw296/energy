@@ -190,6 +190,44 @@ class OctopusGraphQLClient:
                 e.add_note(f'message was: {message!r}')
                 raise
 
+    def smart_device_ids(self, account: str) -> list[str]:
+        data = self.query(
+            'getSmartDevices',
+            query='''
+                query getSmartDevices($accountNumber: String!) {
+                  account(accountNumber: $accountNumber) {
+                    electricityAgreements(active: true) {
+                      meterPoint { meters(includeInactive: false) { smartDevices { deviceId } } }
+                    }
+                  }
+                }
+            ''',
+            params={'accountNumber': account},
+        )
+        return [
+            device['deviceId']
+            for agreement in data['account']['electricityAgreements']
+            for meter in agreement['meterPoint']['meters']
+            for device in meter['smartDevices']
+        ]
+
+    def telemetry(self, device_id: str, start: Timestamp, end: Timestamp) -> list[dict[str, Any]]:
+        """
+        Live readings from the Home Mini, every ten seconds; `demand` is import in watts.
+        """
+        data = self.query(
+            'getTelemetry',
+            query='''
+                query getTelemetry($deviceId: String!, $start: DateTime!, $end: DateTime!) {
+                  smartMeterTelemetry(deviceId: $deviceId, grouping: TEN_SECONDS, start: $start, end: $end) {
+                    readAt demand
+                  }
+                }
+            ''',
+            params={'deviceId': device_id, 'start': start.isoformat(), 'end': end.isoformat()},
+        )
+        return data['smartMeterTelemetry'] or []
+
     def transactions(self, account: str) -> list[dict[str, Any]]:
         nodes: list[dict[str, Any]] = []
         after = None
