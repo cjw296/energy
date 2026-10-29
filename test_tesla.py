@@ -1,11 +1,13 @@
 import json
 from functools import partial
+from zoneinfo import ZoneInfo
 
-from testfixtures import Replace, compare as compare_, ShouldRaise, mock_time
+from pandas import Timestamp, date_range
+from testfixtures import LogCapture, Replace, compare as compare_, ShouldRaise, mock_time
 
 compare = partial(compare_, strict=True)
 
-from tesla import parse_tesla_auth_output, parse_tesla_auth_section, seed_tesla_token
+from tesla import check, check_measurement_count, parse_tesla_auth_output, parse_tesla_auth_section, seed_tesla_token
 
 OUTPUT = """
 --------------------------------- ACCESS TOKEN ---------------------------------
@@ -76,4 +78,52 @@ def test_seed_tesla_token_ignores_stale_cache_missing_expires_at(tmp_path):
     compare(
         json.loads(cache_file.read_text())['person@example.com']['sso'],
         expected=token,
+    )
+
+
+def power_day(day: str, *skip: str) -> dict:
+    moments = date_range(day, periods=2, freq='D', tz='Europe/London')
+    stamps = date_range(moments[0], moments[1], freq='5min', inclusive='left')
+    return {'time_series': [
+        {'timestamp': stamp.isoformat().replace('+00:00', 'Z')}
+        for stamp in stamps if stamp.isoformat() not in skip
+    ]}
+
+
+def end_of(day: str) -> Timestamp:
+    return Timestamp(f'{day} 23:59:59', tz='Europe/London')
+
+
+def test_check_measurement_count_full_day():
+    with LogCapture() as logs:
+        check_measurement_count(power_day('2026-10-24'), end_date=end_of('2026-10-24'))
+    logs.check()
+
+
+def test_check_measurement_count_clocks_go_back():
+    with LogCapture() as logs:
+        check_measurement_count(power_day('2026-10-25'), end_date=end_of('2026-10-25'))
+    logs.check()
+
+
+def test_check_measurement_count_missing_on_clock_change_day():
+    with LogCapture() as logs:
+        check_measurement_count(power_day('2026-10-25', '2026-10-25T23:30:00+00:00'),
+                                end_date=end_of('2026-10-25'))
+    logs.check(
+        ('root', 'WARNING', 'Expected 300, got 299 (5 mins missing), earliest found: 2026-10-25T00:00:00+01:00, '
+                            'latest found: 2026-10-25T23:55:00Z, end_date=2026-10-25 23:59:59+00:00'),
+        ('root', 'WARNING', 'Missing: 2026-10-25 23:30:00+00:00'),
+    )
+
+
+def test_check_uses_local_zone_for_saved_days(tmp_path):
+    day = power_day('2026-10-25', '2026-10-25T23:30:00+00:00')
+    (tmp_path / 'tesla-2026-10-25.json').write_text(json.dumps({'battery': {}, 'data': day}))
+    with Replace('tesla.tzlocal', lambda: ZoneInfo('Europe/London')), LogCapture() as logs:
+        check(None, Timestamp('2026-10-25'), Timestamp('2026-10-25'), tmp_path)
+    logs.check(
+        ('root', 'WARNING', 'Expected 300, got 299 (5 mins missing), earliest found: 2026-10-25T00:00:00+01:00, '
+                            'latest found: 2026-10-25T23:55:00Z, end_date=2026-10-25 23:59:59+00:00'),
+        ('root', 'WARNING', 'Missing: 2026-10-25 23:30:00+00:00'),
     )

@@ -21,6 +21,7 @@ dependencies = [
     "tesla-api>=2.0.1",
     "teslapy>=2.9.2",
     "watchdog>=6.0.0",
+    "python-dateutil>=2.9.0.post0",
 ]
 
 [dependency-groups]

@@ -1,13 +1,14 @@
 import csv
 import json
 import logging
-from datetime import timedelta
+from datetime import date, datetime, timedelta, tzinfo
 from pathlib import Path
 from time import sleep, time
 from typing import Iterator
 from zoneinfo import ZoneInfo
 
 from configurator import Config
+from dateutil.tz import tzlocal
 from pandas import Timestamp, Timedelta, date_range
 from requests import HTTPError
 from teslapy import Tesla, Battery
@@ -47,31 +48,37 @@ def call_with_retry(c, *args, **kw):
 
 
 PATTERN = 'tesla-%Y-%m-%d.json'
-EXPECTED_MEASUREMENTS = 24*60/5
 
 
-def check_measurement_count(data, end_date):
+def expected_timestamps(day: date, tz: tzinfo) -> set[Timestamp]:
+    """
+    Every 5-minute slot in the local day, in UTC: 276 or 300 of them when the clocks change.
+    UTC because datetime hashing ignores fold, so the repeated hour's local times collide.
+    """
+    start = Timestamp(day).tz_localize(tz)
+    end = Timestamp(day + timedelta(days=1)).tz_localize(tz)
+    return set(date_range(start, end, freq='5min', inclusive='left').tz_convert('UTC'))
+
+
+def check_measurement_count(data, end_date: Timestamp):
     time_series = data['time_series']
+    expected = expected_timestamps(end_date.date(), end_date.tz)
     actual = len(time_series)
-    if actual != EXPECTED_MEASUREMENTS:
+    if actual != len(expected):
         earliest = time_series[0]['timestamp']
         latest = time_series[-1]['timestamp']
-        missing = EXPECTED_MEASUREMENTS - actual
+        missing = len(expected) - actual
         logging.warning(
-            f'Expected {EXPECTED_MEASUREMENTS}, '
+            f'Expected {len(expected)}, '
             f'got {actual} ({missing * 5} mins missing), '
             f'earliest found: {earliest}, '
             f'latest found: {latest}, '
             f'end_date={end_date}'
         )
         if missing < 10:
-            earliest_ts = Timestamp(earliest)
-            current = Timestamp(year=earliest_ts.year, month=earliest_ts.month, day=earliest_ts.day, tz=earliest_ts.tz)
-            bad = set(date_range(current, current+Timedelta(days=1), freq='5min', inclusive='left'))
-            for row in time_series:
-                bad.remove(Timestamp(row['timestamp']))
+            bad = expected - {Timestamp(row['timestamp']).tz_convert('UTC') for row in time_series}
             if bad:
-                logging.warning('Missing: ' + ', '.join(str(b) for b in sorted(bad)))
+                logging.warning('Missing: ' + ', '.join(str(b.tz_convert(end_date.tz)) for b in sorted(bad)))
 
 
 def download(config: Config, start: Timestamp, end: Timestamp, root: Path) -> None:
@@ -95,8 +102,11 @@ def download(config: Config, start: Timestamp, end: Timestamp, root: Path) -> No
 
 
 def check(config: Config, start: Timestamp, end: Timestamp, root: Path) -> None:
+    local = tzlocal()
     for json_path, data in json_from_paths(root, PATTERN, start, end):
-        check_measurement_count(data['data'], end_date=json_path)
+        day = datetime.strptime(json_path.name, PATTERN).date()
+        end_date = Timestamp(day).tz_localize(local).replace(hour=23, minute=59, second=59)
+        check_measurement_count(data['data'], end_date=end_date)
 
 
 def json_to_csv(config: Config, start: Timestamp, end: Timestamp, root: Path) -> None:
