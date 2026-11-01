@@ -147,3 +147,11 @@ def test_peak_watch_no_device():
         stub_devices()
         compare(peak_watch(OctopusGraphQLClient('key'), 'A-123', threshold_w=500), expected=None)
     logs.check(('root', 'ERROR', 'No smart meter device found, so no peak import alerts'))
+
+
+def test_reading_stamped_at_end_of_cheap_time_is_cheap():
+    charging = readings('2026-10-30T05:27', '2026-10-30T05:30', demand=8808)
+    check, _ = watch(*charging, *readings('2026-10-30T05:30:10', '2026-10-30T05:31:10', demand=48))
+    with LogCapture() as logs:
+        check(utc('2026-10-30T05:31:13'), SCHEME, NO_DISPATCHES)
+    logs.check()

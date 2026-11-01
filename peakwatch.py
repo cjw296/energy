@@ -13,6 +13,8 @@ from octopus import OctopusGraphQLClient
 from schedule import NIGHT, time_of_use_slots
 
 MIN_READINGS = 6
+# a reading describes the interval ending at its readAt
+READING_INTERVAL = Timedelta(seconds=10)
 
 
 def dispatch_spans(dispatches: dict[str, Any]) -> list[tuple[Timestamp, Timestamp]]:
@@ -51,7 +53,10 @@ class PeakImportWatch:
         if not readings:
             logging.error(f'No smart meter readings between {start} and {now}')
             return
-        demand = [float(reading['demand']) for reading in readings if not cheap(Timestamp(reading['readAt']))]
+        demand = [
+            float(reading['demand']) for reading in readings
+            if not cheap(Timestamp(reading['readAt']) - READING_INTERVAL)
+        ]
         if len(demand) < MIN_READINGS:
             return
         average = mean(demand)
