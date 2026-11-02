@@ -130,6 +130,8 @@ def main():
     parser.add_argument('--no-dump', action='store_false', dest='dump')
     parser.add_argument('--sync', choices=Sync, default=Sync.if_changed)
     parser.add_argument('--force', action='store_true', help='force dump')
+    parser.add_argument('--bill-check', action='store_true',
+                        help="check Octopus's bills against the tariff model once a day")
     parser.add_argument('--peak-alert-watts', type=float, default=500,
                         help='log an error when importing more than this at peak rate; 0 to disable')
 
@@ -160,7 +162,7 @@ def main():
         model_check=DailyModelCheck(
             partial(model_checks, graphql_client, OctopusRESTClient(api_key), account, storage),
             ModelCheckRecords(storage),
-        ),
+        ) if args.bill_check else None,
         peak_watch=peak_watch(graphql_client, account, args.peak_alert_watts),
     )
 

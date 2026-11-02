@@ -91,7 +91,8 @@ Top-level, no package structure:
 - `myenergi.py`: myenergi (Harvi/Zappi) API client
 - `kraken.py`: public Kraken product API (Octopus, EDF, E.ON Next) regional rates
 - `billrec.py`: spreadsheet-vs-Octopus bill reconciliation; `billcheck.py`: checks billed
-  usage against the sync's tariff model (run by `octopus-bill-rec.py` and daily by the sync)
+  usage against the sync's tariff model (run by `octopus-bill-rec.py`, and daily by the
+  sync with `--bill-check`)
 - `fitmodel.py` / `fit-export-model.py`: FiT deemed export vs metered export, from Tesla and
   zappi data plus the spreadsheet's Solar sheet
 - `loaders.py`: pandas loaders for downloaded Octopus/Tesla CSVs
