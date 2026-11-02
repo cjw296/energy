@@ -1,13 +1,14 @@
 import json
 from functools import partial
+from unittest.mock import Mock, call
 from zoneinfo import ZoneInfo
 
-from pandas import Timestamp, date_range
+from pandas import Timedelta, Timestamp, date_range
 from testfixtures import LogCapture, Replace, compare as compare_, ShouldRaise, mock_time
 
 compare = partial(compare_, strict=True)
 
-from tesla import check, check_measurement_count, tesla_end_dates, parse_tesla_auth_output, parse_tesla_auth_section, seed_tesla_token
+from tesla import TeslaTariff, check, check_measurement_count, tesla_end_dates, parse_tesla_auth_output, parse_tesla_auth_section, seed_tesla_token
 
 OUTPUT = """
 --------------------------------- ACCESS TOKEN ---------------------------------
@@ -138,3 +139,36 @@ def test_tesla_end_dates_across_clock_change():
         ('2026-10-25T00:00:00+01:00', '2026-10-25T23:59:59+00:00'),
         ('2026-10-26T00:00:00+00:00', '2026-10-26T23:59:59+00:00'),
     ])
+
+
+T0 = Timestamp('2026-11-02 21:00', tz='UTC')
+
+
+def test_tesla_tariff_rereads_once_stale():
+    battery = Mock()
+    battery.get_tariff.side_effect = [{'read': 1}, {'read': 2}]
+    tariff = TeslaTariff(battery, max_age=Timedelta(minutes=30))
+    compare([tariff.current(T0), tariff.current(T0 + Timedelta(minutes=29)),
+             tariff.current(T0 + Timedelta(minutes=30))],
+            expected=[{'read': 1}, {'read': 1}, {'read': 2}])
+
+
+def test_tesla_tariff_update_rereads_and_restarts_the_clock():
+    battery = Mock()
+    battery.get_tariff.side_effect = [{'read': 1}, {'read': 'after set'}]
+    tariff = TeslaTariff(battery, max_age=Timedelta(minutes=30))
+    tariff.current(T0)
+    tariff.update({'wanted': True}, T0 + Timedelta(minutes=10))
+    compare(tariff.current(T0 + Timedelta(minutes=35)), expected={'read': 'after set'})
+    compare(list(battery.mock_calls), expected=[
+        call.get_tariff(), call.set_tariff({'wanted': True}), call.get_tariff(),
+    ])
+
+
+def test_tesla_tariff_failed_read_is_retried():
+    battery = Mock()
+    battery.get_tariff.side_effect = [RuntimeError('403'), {'read': 1}]
+    tariff = TeslaTariff(battery)
+    with ShouldRaise(RuntimeError('403')):
+        tariff.current(T0)
+    compare(tariff.current(T0 + Timedelta(minutes=2)), expected={'read': 1})

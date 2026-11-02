@@ -1,6 +1,7 @@
 import csv
 import json
 import logging
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, tzinfo
 from pathlib import Path
 from time import sleep, time
@@ -46,6 +47,29 @@ def call_with_retry(c, *args, **kw):
 
 
 PATTERN = 'tesla-%Y-%m-%d.json'
+
+
+@dataclass
+class TeslaTariff:
+    """
+    The tariff set on the battery, re-read once older than `max_age`: that catches changes
+    made in the Tesla app, and uses the token often enough for Tesla to keep accepting it.
+    """
+    battery: Battery
+    max_age: Timedelta = Timedelta(minutes=30)
+    tariff: dict | None = field(default=None, init=False)
+    read_at: Timestamp | None = field(default=None, init=False)
+
+    def current(self, now: Timestamp) -> dict:
+        if self.read_at is None or now - self.read_at >= self.max_age:
+            self.tariff = self.battery.get_tariff()
+            self.read_at = now
+        return self.tariff
+
+    def update(self, tariff: dict, now: Timestamp) -> None:
+        self.battery.set_tariff(tariff)
+        self.tariff = self.battery.get_tariff()
+        self.read_at = now
 
 
 def expected_timestamps(day: date, tz: tzinfo) -> set[Timestamp]:

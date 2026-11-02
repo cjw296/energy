@@ -12,13 +12,13 @@ from zoneinfo import ZoneInfo
 from configurator import Config
 from gql.transport.requests import log as gql_logger
 from pandas import Timestamp
-from teslapy import Tesla, Battery
+from teslapy import Tesla
 
 from billcheck import DailyModelCheck, ModelCheckRecords, model_checks
 from common import DiffDumper, add_log_level, configure_logging, Run, diff, root_from
 from octopus import OctopusGraphQLClient, OctopusRESTClient
 from peakwatch import peak_watch
-from tesla import installation_time_zone
+from tesla import TeslaTariff, installation_time_zone
 from schedule import make_seasons_and_energy_charges
 
 gql_logger.setLevel(logging.WARNING)
@@ -46,11 +46,10 @@ class Syncer:
     account: str
     octopus_dumper: DiffDumper | None
     tesla_dumper: DiffDumper | None
-    battery: Battery
+    tesla: TeslaTariff
     timezone: ZoneInfo
     sync: Sync
     force: bool
-    tesla_tariff: dict | None = None
     model_check: Callable[[date], None] | None = None
     peak_watch: Callable[[Timestamp, dict | None, dict], None] | None = None
 
@@ -86,16 +85,15 @@ class Syncer:
                 logging.exception('Peak import check failed')
 
         # get the current tesla tariff config:
-        if not self.tesla_tariff:
-            self.tesla_tariff = self.battery.get_tariff()
+        tesla_tariff = self.tesla.current(now)
         if self.tesla_dumper is not None:
             self.tesla_dumper.update(
-                self.tesla_tariff,
+                tesla_tariff,
                 force=self.force
             )
 
         # build the tariff we think we need:
-        required_tariff = deepcopy(self.tesla_tariff)
+        required_tariff = deepcopy(tesla_tariff)
         required_tariff['code'] = tariff['tariffCode']
         required_tariff['utility'] = 'Octopus'
         required_tariff['name'] = tariff['fullName']
@@ -106,7 +104,7 @@ class Syncer:
             )
         )
 
-        changed = self.tesla_tariff != required_tariff
+        changed = tesla_tariff != required_tariff
         match self.sync:
             case Sync.never:
                 sync = False
@@ -118,10 +116,9 @@ class Syncer:
         if sync:
             planned_dispatches = dispatches['plannedDispatches']
             logging.info(f'Planned dispatches:\n{pformat(planned_dispatches, sort_dicts=False)}')
-            self.battery.set_tariff(required_tariff)
-            diff_text = diff(self.tesla_tariff, required_tariff, )
+            self.tesla.update(required_tariff, now)
+            diff_text = diff(tesla_tariff, required_tariff, )
             logging.info(f'Tesla tariff updated:\n{diff_text}')
-            self.tesla_tariff = self.battery.get_tariff()
         elif changed:
             logging.warning('not updating Tesla schedule!')
 
@@ -156,7 +153,7 @@ def main():
         account,
         octopus_dumper,
         tesla_dumper,
-        battery,
+        TeslaTariff(battery),
         installation_time_zone(battery),
         args.sync,
         args.force,
