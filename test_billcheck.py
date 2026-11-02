@@ -11,7 +11,7 @@ from pandas import Timestamp
 from testfixtures import LogCapture, ShouldRaise, compare as compare_
 
 from billcheck import (
-    DailyModelCheck, ModelCheck, RatePeriod, dispatch_half_hours, expected_usage_cost, in_window,
+    DailyModelCheck, ModelCheck, ModelCheckRecords, RatePeriod, dispatch_half_hours, expected_usage_cost, in_window,
     load_dumps, model_checks, rate_periods,
 )
 from billrec import Charge
@@ -233,13 +233,15 @@ def test_model_checks(tmp_path):
         compare(pook.isdone(), expected=True)
 
 
-def test_model_checks_since(tmp_path):
+def test_model_checks_skips_checked_charges(tmp_path):
+    checked = Charge(start=date(2026, 7, 15), end=date(2026, 8, 31), kwh=Decimal('3.0'),
+                     cost_inc_vat=Decimal('0.21'), standing_ex_vat=Decimal('0'), usage_ex_vat=Decimal('0.2'))
     with pook.use():
         stub_tariff(SCHEME)
         stub_rate_history()
         stub_transactions(transaction('2026-07-15', '2026-08-31', usage_cost=21, gross=21, net=20))
         stub_meter_point()
-        compare(model_checks(*clients(), 'A-123', tmp_path, since=date(2026, 8, 31)), expected=[])
+        compare(model_checks(*clients(), 'A-123', tmp_path, checked={checked}), expected=[])
         compare(pook.isdone(), expected=True)
 
 
@@ -250,20 +252,35 @@ def test_model_checks_no_time_of_use_scheme(tmp_path):
         compare(pook.isdone(), expected=True)
 
 
-def test_daily_model_check():
+def test_records_round_trip(tmp_path):
+    records = ModelCheckRecords(tmp_path)
+    mismatch = ModelCheck(charge=charge('2026-10-01', '2026-10-06', usage_ex_vat='5.08'),
+                          expected_ex_vat=Decimal('5.17'))
+    records.save(mismatch)
+    compare(json.loads((tmp_path / 'bill-check-2026-10-01-2026-10-06.json').read_text()), expected={
+        'charge': {'start': '2026-10-01', 'end': '2026-10-06', 'kwh': '123.456', 'cost_inc_vat': '43.21',
+                   'standing_ex_vat': '12.35', 'usage_ex_vat': '5.08'},
+        'expected_ex_vat': '5.17', 'difference': '-0.09', 'ok': False,
+    })
+    compare(records.charges(), expected={mismatch.charge})
+
+
+def test_daily_model_check(tmp_path):
     ok = ModelCheck(charge=charge(), expected_ex_vat=Decimal('12.34'))
     mismatch = ModelCheck(charge=charge('2026-09-01', '2026-09-30'), expected_ex_vat=Decimal('20'))
-    run = Mock(side_effect=[[ok], [mismatch]])
-    check = DailyModelCheck(run)
+    run = Mock(side_effect=[[ok, mismatch], []])
+    check = DailyModelCheck(run, ModelCheckRecords(tmp_path))
     with LogCapture() as logs:
-        check(date(2026, 9, 10))
-        check(date(2026, 9, 10))
         check(date(2026, 10, 2))
-    compare(list(run.mock_calls), expected=[call(None), call(date(2026, 8, 31))])
-    compare(check.last_checked_end, expected=date(2026, 9, 30))
+        check(date(2026, 10, 2))
     logs.check(
         ('root', 'INFO', 'Tariff model check 2026-07-15..2026-08-31: billed £12.34 ex VAT, '
                          'tariff model £12.34: ok'),
         ('root', 'ERROR', 'Tariff model check 2026-09-01..2026-09-30: billed £12.34 ex VAT, '
                           'tariff model £20.00: MISMATCH (-7.66)'),
     )
+    restarted = DailyModelCheck(run, ModelCheckRecords(tmp_path))
+    with LogCapture() as logs:
+        restarted(date(2026, 10, 2))
+    logs.check()
+    compare(list(run.mock_calls), expected=[call(set()), call({ok.charge, mismatch.charge})])

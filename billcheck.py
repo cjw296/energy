@@ -1,7 +1,7 @@
 import json
 import logging
-from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass
+from collections.abc import Callable, Container, Iterable, Mapping
+from dataclasses import dataclass, fields
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -15,6 +15,7 @@ from schedule import DAY, NIGHT, time_of_use_slots
 
 TOLERANCE = Decimal('0.05')
 DISPATCH_DUMP_PREFIX = 'octopus-dispatches'
+RECORD_PREFIX = 'bill-check'
 HALF_HOUR = Timedelta(minutes=30)
 
 
@@ -113,8 +114,12 @@ def local_midnight(day: date, tz: ZoneInfo) -> Timestamp:
     return Timestamp(datetime.combine(day, time()), tz=tz)
 
 
-def model_checks(graphql, rest, account: str, dumps_root: Path, since: date | None = None) -> list[ModelCheck]:
-    """Check bills on the current time-of-use agreement, optionally only those ending after `since`."""
+def model_checks(
+        graphql, rest, account: str, dumps_root: Path, checked: Container[Charge] = (),
+) -> list[ModelCheck]:
+    """
+    Check bills on the current time-of-use agreement, skipping charges already `checked`.
+    """
     tariff = graphql.tariff(account)
     scheme = tariff['timeOfUseScheme']
     if scheme is None:
@@ -127,7 +132,7 @@ def model_checks(graphql, rest, account: str, dumps_root: Path, since: date | No
                          rest.unit_rates(product, code, 'night', agreement_start))
     charges = [
         charge for charge in charges_from_transactions(graphql.transactions(account))
-        if local_midnight(charge.start, tz) >= agreement_start and (since is None or charge.end > since)
+        if local_midnight(charge.start, tz) >= agreement_start and charge not in checked
     ]
     point = rest.meter_point(account, 'electricity_meter_points')
     serials = [meter['serial_number'] for meter in point['meters']]
@@ -143,17 +148,48 @@ def model_checks(graphql, rest, account: str, dumps_root: Path, since: date | No
     return checks
 
 
+class ModelCheckRecords:
+    """
+    One JSON record per checked bill, so each is reported once, however often the sync restarts.
+    """
+
+    def __init__(self, root: Path):
+        self.root = root
+
+    def charges(self) -> set[Charge]:
+        charges = set()
+        for path in self.root.glob(f'{RECORD_PREFIX}-*.json'):
+            data = json.loads(path.read_text())['charge']
+            charges.add(Charge(
+                start=date.fromisoformat(data['start']),
+                end=date.fromisoformat(data['end']),
+                **{field.name: Decimal(data[field.name])
+                   for field in fields(Charge) if field.name not in ('start', 'end')},
+            ))
+        return charges
+
+    def save(self, check: ModelCheck) -> None:
+        charge = check.charge
+        record = {
+            'charge': {field.name: str(getattr(charge, field.name)) for field in fields(Charge)},
+            'expected_ex_vat': str(check.expected_ex_vat),
+            'difference': str(check.difference),
+            'ok': check.ok,
+        }
+        path = self.root / f'{RECORD_PREFIX}-{charge.start}-{charge.end}.json'
+        path.write_text(json.dumps(record, indent=2))
+
+
 @dataclass
 class DailyModelCheck:
-    run: Callable[[date | None], list[ModelCheck]]
+    run: Callable[[Container[Charge]], list[ModelCheck]]
+    records: ModelCheckRecords
     last_run: date | None = None
-    last_checked_end: date | None = None
 
     def __call__(self, today: date) -> None:
         if today == self.last_run:
             return
         self.last_run = today
-        for check in self.run(self.last_checked_end):
+        for check in self.run(self.records.charges()):
             (logging.info if check.ok else logging.error)(f'Tariff model check {check}')
-            if self.last_checked_end is None or check.charge.end > self.last_checked_end:
-                self.last_checked_end = check.charge.end
+            self.records.save(check)

@@ -14,7 +14,7 @@ from gql.transport.requests import log as gql_logger
 from pandas import Timestamp
 from teslapy import Tesla, Battery
 
-from billcheck import DailyModelCheck, model_checks
+from billcheck import DailyModelCheck, ModelCheckRecords, model_checks
 from common import DiffDumper, add_log_level, configure_logging, Run, diff, root_from
 from octopus import OctopusGraphQLClient, OctopusRESTClient
 from peakwatch import peak_watch
@@ -161,7 +161,8 @@ def main():
         args.sync,
         args.force,
         model_check=DailyModelCheck(
-            partial(model_checks, graphql_client, OctopusRESTClient(api_key), account, storage)
+            partial(model_checks, graphql_client, OctopusRESTClient(api_key), account, storage),
+            ModelCheckRecords(storage),
         ),
         peak_watch=peak_watch(graphql_client, account, args.peak_alert_watts),
     )
